@@ -5,7 +5,7 @@ import com.google.inject.Provider;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.neo4j.graphdb.GraphDatabaseService;
-import org.neo4j.graphdb.Transaction;import java.lang.Object;import java.lang.Override;import java.lang.ThreadLocal;import java.lang.Throwable;
+import org.neo4j.graphdb.Transaction;
 
 /**
  * @author tbaum
