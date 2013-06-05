@@ -1,12 +1,11 @@
 package com.google.inject.extensions.neo4j;
 
-import org.neo4j.graphdb.ResourceIterator;
-
 import java.util.Iterator;
 
 import static java.util.Arrays.asList;
 
-public class DelegateResourceIterator<T> implements ResourceIterator<T> {
+//public class DelegateResourceIterator<T> implements ResourceIterator<T> {
+public class DelegateResourceIterator<T> implements Iterator<T> {
 
     private final Iterator<T> deleage;
 
@@ -26,8 +25,8 @@ public class DelegateResourceIterator<T> implements ResourceIterator<T> {
         return new DelegateResourceIterator<T>(asList(element));
     }
 
-    @Override public void close() {
-    }
+//    @Override public void close() {
+//    }
 
     @Override public boolean hasNext() {
         return deleage.hasNext();

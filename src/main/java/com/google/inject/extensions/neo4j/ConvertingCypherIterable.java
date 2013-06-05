@@ -4,8 +4,6 @@ import ch.lambdaj.function.convert.Converter;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.cypherdsl.Identifier;
 import org.neo4j.cypherdsl.query.Query;
-import org.neo4j.graphdb.ResourceIterable;
-import org.neo4j.graphdb.ResourceIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -189,13 +187,13 @@ public abstract class ConvertingCypherIterable<T> implements Iterable<T> {
     }
 
     public static class ResultMapIterator implements Iterator<ResultMap> {
-        private final ResourceIterator<Map<String, Object>> iterator;
+        private final Iterator<Map<String, Object>> iterator;
 
-        public ResultMapIterator(ResourceIterable<Map<String, Object>> iterable) {
+        public ResultMapIterator(Iterable<Map<String, Object>> iterable) {
             this.iterator = iterable.iterator();
         }
 
-        public ResultMapIterator(ResourceIterator<Map<String, Object>> iterator) {
+        public ResultMapIterator(Iterator<Map<String, Object>> iterator) {
             this.iterator = iterator;
         }
 
