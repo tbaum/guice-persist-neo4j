@@ -105,12 +105,20 @@ public abstract class ConvertingCypherIterable<T> implements Iterable<T> {
             return new ResultMap(Collections.<String, Object>emptyMap());
         }
 
-        @SuppressWarnings("unchecked") public <T> T get(Identifier o) {
-            return (T) map.get(o.toString());
+        public <T> T get(Identifier o) {
+            return get(o.toString());
+        }
+
+        @SuppressWarnings("unchecked") public <T> T get(String o) {
+            return (T) map.get(o);
         }
 
         public boolean contains(Identifier o) {
-            return map.get(o.toString()) != null;
+            return contains(o.toString());
+        }
+
+        public boolean contains(String o) {
+            return map.get(o) != null;
         }
 
         @Override public String toString() {
