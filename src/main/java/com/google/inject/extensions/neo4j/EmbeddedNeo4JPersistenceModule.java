@@ -6,8 +6,6 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static java.lang.Runtime.getRuntime;
-
 public class EmbeddedNeo4JPersistenceModule extends Neo4JPersistenceModule {
     private static final Logger LOG = LoggerFactory.getLogger(EmbeddedNeo4JPersistenceModule.class);
     private final String dbLocation;
@@ -26,16 +24,7 @@ public class EmbeddedNeo4JPersistenceModule extends Neo4JPersistenceModule {
     }
 
     @Override protected GraphDatabaseService createGraphDatabase() {
-
-        final GraphDatabaseService gdb = new GraphDatabaseFactory().newEmbeddedDatabase(dbLocation);
-
-        getRuntime().addShutdownHook(new Thread() {
-            @Override public void run() {
-                gdb.shutdown();
-            }
-        });
-
-        return gdb;
+        return new GraphDatabaseFactory().newEmbeddedDatabase(dbLocation);
     }
 }
 

@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 
 import static com.google.inject.matcher.Matchers.annotatedWith;
 import static com.google.inject.matcher.Matchers.any;
+import static java.lang.Runtime.getRuntime;
 import static java.lang.System.currentTimeMillis;
 
 /**
@@ -81,6 +82,12 @@ public abstract class Neo4JPersistenceModule extends AbstractModule {
 
     @Provides @Singleton public GraphDatabaseService getGraphDatabaseService() {
         final GraphDatabaseService graphDatabase = createGraphDatabase();
+
+        getRuntime().addShutdownHook(new Thread() {
+            @Override public void run() {
+                graphDatabase.shutdown();
+            }
+        });
 
         if (!(graphDatabase instanceof EmbeddedReadOnlyGraphDatabase)) {
             graphDatabase.registerTransactionEventHandler(new TransactionEventHandler<Object>() {
