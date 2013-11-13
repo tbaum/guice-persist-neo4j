@@ -80,7 +80,7 @@ public class CypherExportService {
     }
 
     private Map<String, Object> toMap(PropertyContainer pc) {
-        final Map<String, Object> result = new TreeMap<String, Object>();
+        final Map<String, Object> result = new TreeMap<>();
         for (String prop : pc.getPropertyKeys()) {
             result.put(prop, pc.getProperty(prop));
         }

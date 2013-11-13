@@ -11,7 +11,7 @@ public class ListResult<E extends Serializable> implements Serializable {
     private final int total;
 
     public ListResult(Collection<E> list, int total) {
-        this.list = new ArrayList<E>(list);
+        this.list = new ArrayList<>(list);
         this.total = total;
     }
 

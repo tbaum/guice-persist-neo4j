@@ -6,28 +6,34 @@ import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Transaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author tbaum
- * @since 20.02.12
+ * @since 04.10.2013
  */
 public class LocalTxnInterceptor implements MethodInterceptor {
+
+    private static final Logger LOG = LoggerFactory.getLogger(LocalTxnInterceptor.class);
     @Inject private final Provider<GraphDatabaseService> gdb = null;
-    private final ThreadLocal<Transaction> currentTransaction = new ThreadLocal<Transaction>();
+    @Inject private final Provider<TransactionScope> transactionScopeProvider = null;
 
     @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
-        if (currentTransaction.get() != null) {
-            return methodInvocation.proceed();
-        }
 
+        LOG.trace("create new transaction");
         final Transaction transaction = gdb.get().beginTx();
-        currentTransaction.set(transaction);
+
+        final TransactionScope transactionScope = transactionScopeProvider.get();
+        transactionScope.enter(transaction);
         try {
             Object result = methodInvocation.proceed();
+            LOG.trace("marking transaction success");
             transaction.success();
             return result;
         } finally {
-            currentTransaction.remove();
+            transactionScope.exit();
+            LOG.trace("finish transaction");
             transaction.finish();
         }
     }

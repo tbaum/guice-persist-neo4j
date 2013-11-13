@@ -16,8 +16,9 @@ import org.slf4j.LoggerFactory;
 public class JoiningLocalTxnInterceptor implements MethodInterceptor {
 
     private static final Logger LOG = LoggerFactory.getLogger(JoiningLocalTxnInterceptor.class);
+    private final ThreadLocal<Transaction> currentTransaction = new ThreadLocal<>();
     @Inject private final Provider<GraphDatabaseService> gdb = null;
-    private final ThreadLocal<Transaction> currentTransaction = new ThreadLocal<Transaction>();
+    @Inject private final Provider<TransactionScope> transactionScopeProvider = null;
 
     @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
         if (currentTransaction.get() != null) {
@@ -27,6 +28,9 @@ public class JoiningLocalTxnInterceptor implements MethodInterceptor {
 
         LOG.trace("create new transaction");
         final Transaction transaction = gdb.get().beginTx();
+        final TransactionScope transactionScope = transactionScopeProvider.get();
+        transactionScope.enter(transaction);
+
         currentTransaction.set(transaction);
         try {
             Object result = methodInvocation.proceed();
@@ -34,6 +38,7 @@ public class JoiningLocalTxnInterceptor implements MethodInterceptor {
             transaction.success();
             return result;
         } finally {
+            transactionScope.exit();
             currentTransaction.remove();
             LOG.trace("finish transaction");
             transaction.finish();
