@@ -3,7 +3,6 @@ package com.google.inject.extensions.neo4j;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import org.aopalliance.intercept.MethodInterceptor;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Transaction;
@@ -21,7 +20,7 @@ import static java.lang.Runtime.getRuntime;
 public abstract class Neo4JPersistenceModule extends AbstractModule {
 
     @Override protected void configure() {
-        MethodInterceptor tx = new LocalTxnInterceptor();
+        TransactionInterceptor tx = new TransactionInterceptor();
         requestInjection(tx);
         bindInterceptor(annotatedWith(Transactional.class), any(), tx);
         bindInterceptor(any(), annotatedWith(Transactional.class), tx);

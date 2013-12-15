@@ -16,4 +16,8 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  */
 @Target({METHOD, TYPE}) @Retention(RUNTIME) @Inherited @ScopeAnnotation
 public @interface Transactional {
+
+    Class<? extends Throwable>[] rollbackOn() default {Throwable.class};
+
+    Class<? extends Throwable>[] noRollbackFor() default {};
 }
