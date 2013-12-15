@@ -8,7 +8,7 @@
     <name>guice-persist-neo4j</name>
 
     <properties>
-        <neo4j.version>1.9.4</neo4j.version>
+        <neo4j.version>1.9.5</neo4j.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
