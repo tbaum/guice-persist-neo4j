@@ -169,7 +169,10 @@ public class RollbackOnTest {
         final Node node;
 
         @Inject A(GraphDatabaseService gds) {
-            node = gds.getNodeById(0);
+            try (Transaction tx = gds.beginTx()) {
+                node = gds.createNode();
+                tx.success();
+            }
         }
 
         @Transactional Transaction _default(RuntimeException t) {

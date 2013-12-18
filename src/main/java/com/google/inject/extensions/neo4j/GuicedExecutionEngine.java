@@ -31,7 +31,7 @@ public class GuicedExecutionEngine extends ExecutionEngine {
         return execute(query, new HashMap<String, Object>());
     }
 
-    @Transactional @Override
+    @Override
     public ExecutionResult execute(String query, Map<String, Object> parameters) {
         LOG.debug("Execute: '{}' params:{}", query, parameters);
         long start = currentTimeMillis();
