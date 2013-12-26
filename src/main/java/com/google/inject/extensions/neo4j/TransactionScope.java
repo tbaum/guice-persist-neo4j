@@ -7,7 +7,7 @@ import org.neo4j.graphdb.Transaction;
 
 import java.util.LinkedList;
 
-public class TransactionScope implements Scope {
+public class TransactionScope implements Scope, AutoCloseable {
 
     public static final TransactionScope TRANSACTIONAL = new TransactionScope();
     private final ThreadLocal<LinkedList<Transaction>> value = new ThreadLocal<>();
@@ -24,14 +24,13 @@ public class TransactionScope implements Scope {
         };
     }
 
-    public void enter(Transaction transaction) {
+    public TransactionScope enter(Transaction transaction) {
         LinkedList<Transaction> transactions = value.get();
         if (transactions == null) {
             value.set(transactions = new LinkedList<>());
         }
-        transactions.add(null);
-
-        put(transaction);
+        transactions.add(transaction);
+        return this;
     }
 
     public void exit() {
@@ -47,29 +46,22 @@ public class TransactionScope implements Scope {
         }
     }
 
-    public void put(Transaction transaction) {
-        final LinkedList<Transaction> transactions = value.get();
-        if (transactions.getLast() != null) {
-            throw new IllegalStateException("Transaction was already set in this scope.");
-        }
-        transactions.set(transactions.size() - 1, transaction);
-    }
-
-    public Transaction currentTransaction() {
-        return value.get().getLast();
-    }
-
     public <T> Provider<T> scope(final Key<T> key, final Provider<T> unscoped) {
         return new Provider<T>() {
             @SuppressWarnings("unchecked") public T get() {
 
-                LinkedList current = (LinkedList) value.get();
+                LinkedList<Transaction> current = value.get();
                 if (current == null) {
-                    current = (LinkedList) unscoped.get();
-                    value.set(current);
+                    throw new IllegalStateException();
+//                    current = (LinkedList) unscoped.get();
+//                    value.set(current);
                 }
                 return (T) current.getLast();
             }
         };
+    }
+
+    @Override public void close() {
+        exit();
     }
 }

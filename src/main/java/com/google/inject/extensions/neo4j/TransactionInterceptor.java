@@ -21,46 +21,29 @@ public class TransactionInterceptor implements MethodInterceptor {
 
     @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
         LOG.trace("create new transaction");
-        final Transaction transaction = gdb.get().beginTx();
-
-        final TransactionScope transactionScope = transactionScopeProvider.get();
-        transactionScope.enter(transaction);
-
-        try {
-            final Object result = methodInvocation.proceed();
-            LOG.trace("marking transaction success");
-            transaction.success();
-            return result;
-        } catch (Throwable throwable) {
-            final Class<? extends Throwable> throwableClass = throwable.getClass();
-            if (noRollback(methodInvocation, throwableClass)) {
-                LOG.debug("marking transaction success (catched exception {})", throwableClass);
+        try (Transaction transaction = gdb.get().beginTx()) {
+            try (TransactionScope ignored = transactionScopeProvider.get().enter(transaction)) {
+                final Object result = methodInvocation.proceed();
+                LOG.trace("marking transaction success");
                 transaction.success();
+                return result;
+            } catch (Throwable throwable) {
+                final Class<? extends Throwable> throwableClass = throwable.getClass();
+                if (noRollback(methodInvocation, throwableClass)) {
+                    LOG.debug("marking transaction success (catched exception {})", throwableClass);
+                    transaction.success();
+                }
+                throw throwable;
             }
-            throw throwable;
-        } finally {
-            transactionScope.exit();
-            LOG.trace("finish transaction");
-            transaction.finish();
         }
     }
 
     private boolean noRollback(MethodInvocation methodInvocation, Class<? extends Throwable> throwable) {
         final Transactional annotation = methodInvocation.getMethod().getAnnotation(Transactional.class);
 
-        if (annotation == null) {
-            return false;
-        }
+        return annotation != null &&
+                (isAssignableFrom(throwable, annotation.noRollbackFor()) || !isAssignableFrom(throwable, annotation.rollbackOn()));
 
-        if (isAssignableFrom(throwable, annotation.noRollbackFor())) {
-            return true;
-        }
-
-        if (!isAssignableFrom(throwable, annotation.rollbackOn())) {
-            return true;
-        }
-
-        return false;
     }
 
     private boolean isAssignableFrom(Class subClass, Class... classes) {
