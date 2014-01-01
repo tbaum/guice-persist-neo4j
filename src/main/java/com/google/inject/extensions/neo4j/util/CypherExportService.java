@@ -5,6 +5,8 @@ import com.google.gson.Gson;
 import com.google.inject.Inject;
 import org.junit.Assert;
 import org.neo4j.graphdb.*;
+import org.neo4j.graphdb.schema.ConstraintDefinition;
+import org.neo4j.graphdb.schema.IndexDefinition;
 
 import java.util.*;
 
@@ -15,11 +17,10 @@ import static org.neo4j.tooling.GlobalGraphOperations.at;
 public class CypherExportService {
 
     @Inject private static GraphDatabaseService gdb;
-    @Inject private static DotExportService dotExportService;
 
     public static void exportToFile() {
         try (Transaction ignored = gdb.beginTx()) {
-            dotExportService.toFile();
+            DotExportService.toFile();
         }
     }
 
@@ -32,6 +33,8 @@ public class CypherExportService {
             Map<Node, Long> nodeIds = nodeIds();
 
             StringBuilder sb = new StringBuilder();
+            appendConstrains(sb);
+            appendIndexes(sb);
             sb.append("create \n");
             sb.append(appendNodes(nodeIds));
 
@@ -41,6 +44,46 @@ public class CypherExportService {
             }
 
             return sb.toString();
+        }
+    }
+
+    private static void appendConstrains(StringBuilder sb) {
+        final List<String> result = new ArrayList<>();
+        for (ConstraintDefinition constraint : gdb.schema().getConstraints()) {
+            switch (constraint.getConstraintType()) {
+
+                case UNIQUENESS:
+                    final Iterator<String> propertyKeys = constraint.getPropertyKeys().iterator();
+                    if (!propertyKeys.hasNext()) {
+                        throw new RuntimeException("unable to handle constraint " + constraint.getConstraintType());
+                    }
+                    result.add("CREATE CONSTRAINT ON (c:" + constraint.getLabel() + ") ASSERT c." + propertyKeys.next() + " IS UNIQUE;");
+                    if (propertyKeys.hasNext()) {
+                        throw new RuntimeException("unable to handle constraint " + constraint.getConstraintType());
+                    }
+                    break;
+                default:
+                    throw new RuntimeException("unable to handle constraint " + constraint.getConstraintType());
+            }
+
+        }
+        addSortedResult(sb, result);
+    }
+
+    private static void appendIndexes(StringBuilder sb) {
+        final List<String> result = new ArrayList<>();
+        for (IndexDefinition index : gdb.schema().getIndexes()) {
+            if (!index.isConstraintIndex()) {
+                result.add("CREATE INDEX ON :" + index.getLabel() + "(" + join(index.getPropertyKeys(), ",") + ");");
+            }
+        }
+            addSortedResult(sb, result);
+    }
+
+    private static void addSortedResult(StringBuilder sb, List<String> result) {
+        Collections.sort(result);
+        for (String s : result) {
+            sb.append(s).append("\n");
         }
     }
 
@@ -66,6 +109,7 @@ public class CypherExportService {
         StringBuilder sb = new StringBuilder();
         sb.append("(");
         formatNode(sb, id);
+        formatLabels(sb, node);
         sb.append(" ");
         formatProperties(sb, node);
         sb.append(")");
@@ -115,5 +159,13 @@ public class CypherExportService {
 
     private static void formatNode(StringBuilder sb, long id) {
         sb.append("_").append(id);
+    }
+
+    private static void formatLabels(StringBuilder sb, Node n) {
+        final Iterable<Label> labels = n.getLabels();
+        final Iterator<Label> iterator = labels.iterator();
+        if (iterator.hasNext()) {
+            sb.append(":").append(join(iterator, ":"));
+        }
     }
 }

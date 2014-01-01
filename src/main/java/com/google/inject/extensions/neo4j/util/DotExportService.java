@@ -2,7 +2,6 @@ package com.google.inject.extensions.neo4j.util;
 
 import com.google.gson.GsonBuilder;
 import com.google.inject.Inject;
-import com.google.inject.extensions.neo4j.Transactional;
 import org.hamcrest.Description;
 import org.hamcrest.TypeSafeMatcher;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
@@ -27,11 +26,6 @@ public class DotExportService {
     public static final Set<FormatStrategy<Relationship>> reverseLink = new HashSet<>();
     @Inject private static ExecutionEngine cypher;
     @Inject private static GraphDatabaseService gds;
-
-    public static String export() {
-        String query = "START n=node(*) return n";
-        return export(query);
-    }
 
     public static String export(Iterator<Node> allNodes) {
         Collection<Node> node = asCollection(asIterable(allNodes));
@@ -119,7 +113,6 @@ public class DotExportService {
         return export(cypher.execute(query).<Node>columnAs("n"));
     }
 
-    @Transactional
     public static void toFile() {
         Throwable t = new Throwable();
         t.fillInStackTrace();
