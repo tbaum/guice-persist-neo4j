@@ -2,17 +2,18 @@ package com.google.inject.extensions.neo4j;
 
 import ch.lambdaj.function.convert.Converter;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
+import org.neo4j.graphdb.ResourceIterable;
+import org.neo4j.graphdb.ResourceIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 import static org.neo4j.helpers.collection.MapUtil.map;
 
-public abstract class ConvertingCypherIterable<T> implements Iterable<T> {
+public abstract class ConvertingCypherIterable<T> implements ResourceIterable<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ConvertingCypherIterable.class);
     private final ExecutionEngine cypher;
@@ -42,22 +43,23 @@ public abstract class ConvertingCypherIterable<T> implements Iterable<T> {
 
     public static <R> R singleCypherResult(ExecutionEngine cypher, String query, Map<String, Object> params,
                                            Converter<ResultMap, R> converter) {
-        Iterator<R> it = convertingCypherIterable(cypher, query, params, converter).iterator();
-        if (it.hasNext()) {
-            R result = it.next();
+        try (ResourceIterator<R> it = convertingCypherIterable(cypher, query, params, converter).iterator()) {
             if (it.hasNext()) {
-                LOG.error("more than one result found!, query:{}, params:{}", query, params);
-                LOG.debug("results {}", cypher.execute(query, params).toString());
-                throw new IllegalStateException("more than one result found!");
+                R result = it.next();
+                if (it.hasNext()) {
+                    LOG.error("more than one result found!, query:{}, params:{}", query, params);
+                    LOG.debug("results {}", cypher.execute(query, params).toString());
+                    throw new IllegalStateException("more than one result found!");
+                }
+                return result;
             }
-            return result;
+            return converter.convert(new ResultMap(map()));
         }
-        return converter.convert(new ResultMap(map()));
     }
 
-    @Override public Iterator<T> iterator() {
-        final Iterator<ResultMap> iterator = toIterator();
-        return new Iterator<T>() {
+    @Override public ResourceIterator<T> iterator() {
+        final ResourceIterator<ResultMap> iterator = toIterator();
+        return new ResourceIterator<T>() {
             @Override public boolean hasNext() {
                 return iterator.hasNext();
             }
@@ -69,12 +71,16 @@ public abstract class ConvertingCypherIterable<T> implements Iterable<T> {
             @Override public void remove() {
                 iterator.remove();
             }
+
+            @Override public void close() {
+                iterator.close();
+            }
         };
     }
 
     protected abstract T convert(ResultMap from);
 
-    protected Iterator<ResultMap> toIterator() {
+    protected ResourceIterator<ResultMap> toIterator() {
         return new ResultMapIterator(cypher.execute(query, params));
     }
 
@@ -102,14 +108,14 @@ public abstract class ConvertingCypherIterable<T> implements Iterable<T> {
         }
     }
 
-    public static class ResultMapIterator implements Iterator<ResultMap> {
-        private final Iterator<Map<String, Object>> iterator;
+    public static class ResultMapIterator implements ResourceIterator<ResultMap> {
+        private final ResourceIterator<Map<String, Object>> iterator;
 
-        public ResultMapIterator(Iterable<Map<String, Object>> iterable) {
+        public ResultMapIterator(ResourceIterable<Map<String, Object>> iterable) {
             this.iterator = iterable.iterator();
         }
 
-        public ResultMapIterator(Iterator<Map<String, Object>> iterator) {
+        public ResultMapIterator(ResourceIterator<Map<String, Object>> iterator) {
             this.iterator = iterator;
         }
 
@@ -124,6 +130,10 @@ public abstract class ConvertingCypherIterable<T> implements Iterable<T> {
 
         @Override public void remove() {
             iterator.remove();
+        }
+
+        @Override public void close() {
+            iterator.close();
         }
     }
 }
