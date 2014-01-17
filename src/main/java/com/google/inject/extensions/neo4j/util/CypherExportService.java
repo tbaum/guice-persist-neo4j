@@ -12,6 +12,7 @@ import java.util.*;
 
 import static ch.lambdaj.Lambda.convert;
 import static ch.lambdaj.Lambda.join;
+import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
 import static org.neo4j.tooling.GlobalGraphOperations.at;
 
 public class CypherExportService {
@@ -25,147 +26,205 @@ public class CypherExportService {
     }
 
     public static void assertGraphEquals(String expected) {
-        Assert.assertEquals(expected, export());
+        Assert.assertEquals(expected, new Exporter(gdb).export());
+    }
+
+    public static void assertGraphConstraintsEquals(String expected) {
+        Assert.assertEquals(expected, new Exporter(gdb).exportConstraints());
     }
 
     public static String export() {
-        try (Transaction ignored = gdb.beginTx()) {
-            Map<Node, Long> nodeIds = nodeIds();
+        return new Exporter(gdb).export();
+    }
 
-            StringBuilder sb = new StringBuilder();
-            appendConstrains(sb);
-            appendIndexes(sb);
-            sb.append("create \n");
-            sb.append(appendNodes(nodeIds));
+    private static class Exporter {
+        private final GraphDatabaseService gdb;
+        private final IdResolver idResolver = new IdResolver();
 
-            String rels = appendRelationships(nodeIds);
-            if (!rels.isEmpty()) {
-                sb.append(",\n").append(rels);
+        private Exporter(GraphDatabaseService gdb) {
+            this.gdb = gdb;
+        }
+
+        public String export() {
+            try (Transaction ignored = gdb.beginTx()) {
+                Collection<Node> nodeIds = asCollection(at(gdb).getAllNodes());
+
+                StringBuilder sb = new StringBuilder("create \n");
+                sb.append(appendNodes(nodeIds));
+
+                String rels = appendRelationships(nodeIds);
+                if (!rels.isEmpty()) {
+                    sb.append(",\n").append(rels);
+                }
+
+                return sb.toString();
             }
+        }
 
+        public String exportConstraints() {
+            try (Transaction ignored = gdb.beginTx()) {
+
+                StringBuilder sb = new StringBuilder();
+                appendConstrains(sb);
+                appendIndexes(sb);
+
+                return sb.toString();
+            }
+        }
+
+        private void appendConstrains(StringBuilder sb) {
+            final List<String> result = new ArrayList<>();
+            for (ConstraintDefinition constraint : gdb.schema().getConstraints()) {
+                switch (constraint.getConstraintType()) {
+
+                    case UNIQUENESS:
+                        final Iterator<String> propertyKeys = constraint.getPropertyKeys().iterator();
+                        if (!propertyKeys.hasNext()) {
+                            throw new RuntimeException("unable to handle constraint " + constraint.getConstraintType());
+                        }
+                        result.add("CREATE CONSTRAINT ON (c:" + constraint.getLabel() + ") ASSERT c." + propertyKeys.next() + " IS UNIQUE;");
+                        if (propertyKeys.hasNext()) {
+                            throw new RuntimeException("unable to handle constraint " + constraint.getConstraintType());
+                        }
+                        break;
+                    default:
+                        throw new RuntimeException("unable to handle constraint " + constraint.getConstraintType());
+                }
+
+            }
+            addSortedResult(sb, result);
+        }
+
+        private void appendIndexes(StringBuilder sb) {
+            final List<String> result = new ArrayList<>();
+            for (IndexDefinition index : gdb.schema().getIndexes()) {
+                if (!index.isConstraintIndex()) {
+                    result.add("CREATE INDEX ON :" + index.getLabel() + "(" + join(index.getPropertyKeys(), ",") + ");");
+                }
+            }
+            addSortedResult(sb, result);
+        }
+
+        private void addSortedResult(StringBuilder sb, List<String> result) {
+            Collections.sort(result);
+            for (String s : result) {
+                sb.append(s).append("\n");
+            }
+        }
+
+        private String appendNodes(final Collection<Node> allNodes) {
+            return join(convert(allNodes, new Converter<Node, String>() {
+                @Override public String convert(Node node) {
+                    return appendNode(node);
+                }
+            }), ",\n");
+        }
+
+        private String appendNode(Node node) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("(");
+            formatNode(sb, node);
+            formatLabels(sb, node);
+            sb.append(" ");
+            formatProperties(sb, node);
+            sb.append(")");
             return sb.toString();
         }
+
+        private String appendRelationships(Collection<Node> allNodes) {
+            StringBuilder sb = new StringBuilder();
+            for (Node node : allNodes) {
+                List<String> rels = new ArrayList<>();
+                for (Relationship rel : node.getRelationships(Direction.OUTGOING)) {
+                    rels.add(appendRelationship(rel));
+                }
+                if (rels.isEmpty()) continue;
+
+                Collections.sort(rels);
+                if (sb.length() > 0) sb.append(",\n");
+                sb.append(join(rels, ",\n"));
+            }
+            return sb.toString();
+        }
+
+        private String appendRelationship(Relationship rel) {
+            StringBuilder sb = new StringBuilder();
+            sb.append('(');
+            formatNode(sb, rel.getStartNode());
+            sb.append(")-[:").append(rel.getType().name());
+            formatProperties(sb, rel);
+            sb.append("]->(");
+            formatNode(sb, rel.getEndNode());
+            sb.append(')');
+            return sb.toString();
+        }
+
+        private void formatProperties(StringBuilder sb, PropertyContainer pc) {
+            Map<String, Object> properties = new TreeMap<>();
+            for (String prop : pc.getPropertyKeys()) {
+                properties.put(prop, pc.getProperty(prop));
+            }
+            if (properties.isEmpty()) return;
+            sb.append(" ");
+            final String jsonString = new Gson().toJson(properties);
+            sb.append(removeNameQuotes(jsonString));
+        }
+
+        private String removeNameQuotes(String json) {
+            return json.replaceAll("\"([^\"]+)\":", "$1:");
+        }
+
+        private void formatNode(StringBuilder sb, Node node) {
+            sb.append(idResolver.resolveId(node));
+        }
+
+        private void formatLabels(StringBuilder sb, Node n) {
+            final Iterable<Label> labels = n.getLabels();
+            final Iterator<Label> iterator = labels.iterator();
+            if (iterator.hasNext()) {
+                sb.append(":").append(join(iterator, ":"));
+            }
+        }
     }
 
-    private static void appendConstrains(StringBuilder sb) {
-        final List<String> result = new ArrayList<>();
-        for (ConstraintDefinition constraint : gdb.schema().getConstraints()) {
-            switch (constraint.getConstraintType()) {
+    private static class IdResolver {
+        private final Map<String, Map<Node, Long>> nodeId = new HashMap<>();
 
-                case UNIQUENESS:
-                    final Iterator<String> propertyKeys = constraint.getPropertyKeys().iterator();
-                    if (!propertyKeys.hasNext()) {
-                        throw new RuntimeException("unable to handle constraint " + constraint.getConstraintType());
-                    }
-                    result.add("CREATE CONSTRAINT ON (c:" + constraint.getLabel() + ") ASSERT c." + propertyKeys.next() + " IS UNIQUE;");
-                    if (propertyKeys.hasNext()) {
-                        throw new RuntimeException("unable to handle constraint " + constraint.getConstraintType());
-                    }
-                    break;
-                default:
-                    throw new RuntimeException("unable to handle constraint " + constraint.getConstraintType());
+        private String resolveId(Node node) {
+            String label = firstLabel(node);
+
+            Map<Node, Long> nodeLongMap = labelMap(label);
+            Long id = labelIdFor(node, nodeLongMap);
+
+            return formatName(label, id);
+        }
+
+        private Long labelIdFor(Node node, Map<Node, Long> nodeLongMap) {
+            if (!nodeLongMap.containsKey(node)) {
+                nodeLongMap.put(node, nodeLongMap.size() + 1L);
             }
 
+            return nodeLongMap.get(node);
         }
-        addSortedResult(sb, result);
-    }
 
-    private static void appendIndexes(StringBuilder sb) {
-        final List<String> result = new ArrayList<>();
-        for (IndexDefinition index : gdb.schema().getIndexes()) {
-            if (!index.isConstraintIndex()) {
-                result.add("CREATE INDEX ON :" + index.getLabel() + "(" + join(index.getPropertyKeys(), ",") + ");");
+        private Map<Node, Long> labelMap(String label) {
+            if (nodeId.containsKey(label)) {
+                return nodeId.get(label);
             }
+
+            HashMap<Node, Long> value = new HashMap<>();
+            nodeId.put(label, value);
+
+            return value;
         }
-            addSortedResult(sb, result);
-    }
 
-    private static void addSortedResult(StringBuilder sb, List<String> result) {
-        Collections.sort(result);
-        for (String s : result) {
-            sb.append(s).append("\n");
+        private String formatName(String label, Long aLong) {
+            return label + "_" + aLong;
         }
-    }
 
-    private static Map<Node, Long> nodeIds() {
-        long count = 1;
-        Map<Node, Long> nodeIds = new LinkedHashMap<>();
-        for (Node node : at(gdb).getAllNodes()) {
-            nodeIds.put(node, count);
-            count++;
-        }
-        return nodeIds;
-    }
-
-    private static String appendNodes(final Map<Node, Long> nodeIds) {
-        return join(convert(nodeIds.keySet(), new Converter<Node, String>() {
-            @Override public String convert(Node node) {
-                return appendNode(node, nodeIds.get(node));
-            }
-        }), ",\n");
-    }
-
-    private static String appendNode(Node node, long id) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("(");
-        formatNode(sb, id);
-        formatLabels(sb, node);
-        sb.append(" ");
-        formatProperties(sb, node);
-        sb.append(")");
-        return sb.toString();
-    }
-
-    private static String appendRelationships(Map<Node, Long> nodeIds) {
-        StringBuilder sb = new StringBuilder();
-        for (Node node : nodeIds.keySet()) {
-            List<String> rels = new ArrayList<>();
-            for (Relationship rel : node.getRelationships(Direction.OUTGOING)) {
-                rels.add(appendRelationship(rel, nodeIds.get(rel.getStartNode()), nodeIds.get(rel.getEndNode())));
-            }
-            if (rels.isEmpty()) continue;
-
-            Collections.sort(rels);
-            if (sb.length() > 0) sb.append(",\n");
-            sb.append(join(rels, ",\n"));
-        }
-        return sb.toString();
-    }
-
-    private static String appendRelationship(Relationship rel, long startNodeId, long endNodeId) {
-        StringBuilder sb = new StringBuilder();
-        formatNode(sb, startNodeId);
-        sb.append("-[:").append(rel.getType().name());
-        formatProperties(sb, rel);
-        sb.append("]->");
-        formatNode(sb, endNodeId);
-        return sb.toString();
-    }
-
-    private static void formatProperties(StringBuilder sb, PropertyContainer pc) {
-        Map<String, Object> properties = new TreeMap<>();
-        for (String prop : pc.getPropertyKeys()) {
-            properties.put(prop, pc.getProperty(prop));
-        }
-        if (properties.isEmpty()) return;
-        sb.append(" ");
-        final String jsonString = new Gson().toJson(properties);
-        sb.append(removeNameQuotes(jsonString));
-    }
-
-    private static String removeNameQuotes(String json) {
-        return json.replaceAll("\"([^\"]+)\":", "$1:");
-    }
-
-    private static void formatNode(StringBuilder sb, long id) {
-        sb.append("_").append(id);
-    }
-
-    private static void formatLabels(StringBuilder sb, Node n) {
-        final Iterable<Label> labels = n.getLabels();
-        final Iterator<Label> iterator = labels.iterator();
-        if (iterator.hasNext()) {
-            sb.append(":").append(join(iterator, ":"));
+        private String firstLabel(Node node) {
+            final Iterator<Label> iterator = node.getLabels().iterator();
+            return iterator.hasNext() ? iterator.next().name() : "_no_label_";
         }
     }
 }

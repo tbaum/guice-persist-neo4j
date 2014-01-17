@@ -24,23 +24,24 @@ public class CypherExportTest {
     }
 
     @Test
-    public void testNoResult() {
-        cypher.execute("CYPHER 2.0 CREATE CONSTRAINT ON (i:Crew) ASSERT i.name IS UNIQUE");
+    public void testExport() {
         cypher.execute("CYPHER 2.0 CREATE INDEX ON :Matrix(name)");
+        cypher.execute("CYPHER 2.0 CREATE CONSTRAINT ON (i:Crew) ASSERT i.name IS UNIQUE");
         cypher.execute("CYPHER 2.0 CREATE " +
                 "(:Crew { name: 'Trinity' })<-[:LOVES]-(:Crew { name:'Neo' })-[:KNOWS {since: 1990}]->(:Crew { name: 'Morpheus' })," +
                 "(:Crew:Matrix { name: 'Cypher' })"
         );
 
-        CypherExportService.assertGraphEquals("CREATE CONSTRAINT ON (c:Crew) ASSERT c.name IS UNIQUE;\n" +
-                "CREATE INDEX ON :Matrix(name);\n" +
-                "create \n" +
-                "(_1:Crew  {name:\"Neo\"}),\n" +
-                "(_2:Crew  {name:\"Trinity\"}),\n" +
-                "(_3:Crew  {name:\"Morpheus\"}),\n" +
-                "(_4:Crew:Matrix  {name:\"Cypher\"}),\n" +
-                "_1-[:KNOWS {since:1990}]->_3,\n" +
-                "_1-[:LOVES]->_2");
+        CypherExportService.assertGraphConstraintsEquals("CREATE CONSTRAINT ON (c:Crew) ASSERT c.name IS UNIQUE;\n" +
+                "CREATE INDEX ON :Matrix(name);\n");
+
+        CypherExportService.assertGraphEquals("create \n" +
+                "(Crew_1:Crew  {name:\"Neo\"}),\n" +
+                "(Crew_2:Crew  {name:\"Trinity\"}),\n" +
+                "(Crew_3:Crew  {name:\"Morpheus\"}),\n" +
+                "(Matrix_1:Matrix:Crew  {name:\"Cypher\"}),\n" +
+                "(Crew_1)-[:KNOWS {since:1990}]->(Crew_3),\n" +
+                "(Crew_1)-[:LOVES]->(Crew_2)");
         System.err.println(CypherExportService.export());
     }
 }
