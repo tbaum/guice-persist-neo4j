@@ -127,8 +127,7 @@ public class DotExportService {
 
     private static String formatProperties(PropertyContainer pc, boolean reverse, boolean mark, String... lines) {
         if (!pc.getPropertyKeys().iterator().hasNext() && lines.length == 0) return "";
-
-        return "[label=\"" + id(pc) + "\n" +
+        return "[label=\" [" + id(pc) + "] " + (pc instanceof Node ? formatLabels((Node) pc) : "") + "\n" +
                 formatProperties(pc) + (lines.length > 0 ? join(lines, "\n") : "") + "\"" +
                 (mark ? ",style=\"filled\"" : "") +
                 (reverse ? ",dir=back" : "") +
@@ -138,6 +137,14 @@ public class DotExportService {
     private static String formatProperties(PropertyContainer pc) {
         final Map<String, Object> properties = toMap(pc);
         return properties.isEmpty() ? "" : " " + removeNameQuotes(new GsonBuilder().setPrettyPrinting().create().toJson(properties));
+    }
+
+    private static String formatLabels(Node pc) {
+        StringBuilder builder = new StringBuilder();
+        for (Label label : pc.getLabels()) {
+            builder.append(":").append(label.name());
+        }
+        return builder.toString();
     }
 
     private static Map<String, Object> toMap(PropertyContainer pc) {
