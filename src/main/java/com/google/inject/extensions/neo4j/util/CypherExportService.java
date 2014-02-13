@@ -20,9 +20,7 @@ public class CypherExportService {
     @Inject private static GraphDatabaseService gdb;
 
     public static void exportToFile() {
-        try (Transaction ignored = gdb.beginTx()) {
-            DotExportService.toFile();
-        }
+        DotExportService.toFile();
     }
 
     public static void assertGraphEquals(String expected) {
@@ -46,7 +44,7 @@ public class CypherExportService {
         }
 
         public String export() {
-            try (Transaction ignored = gdb.beginTx()) {
+            try (Transaction tx = gdb.beginTx()) {
                 Collection<Node> nodeIds = asCollection(at(gdb).getAllNodes());
 
                 StringBuilder sb = new StringBuilder("create \n");
@@ -56,18 +54,18 @@ public class CypherExportService {
                 if (!rels.isEmpty()) {
                     sb.append(",\n").append(rels);
                 }
-
+                tx.success();
                 return sb.toString();
             }
         }
 
         public String exportConstraints() {
-            try (Transaction ignored = gdb.beginTx()) {
+            try (Transaction tx = gdb.beginTx()) {
 
                 StringBuilder sb = new StringBuilder();
                 appendConstrains(sb);
                 appendIndexes(sb);
-
+                tx.success();
                 return sb.toString();
             }
         }

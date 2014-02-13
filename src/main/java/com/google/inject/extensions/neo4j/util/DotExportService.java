@@ -110,7 +110,11 @@ public class DotExportService {
     }
 
     public static String export(String query) {
-        return export(cypher.execute(query).<Node>columnAs("n"));
+        try (Transaction tx = gds.beginTx()) {
+            final String result = export(cypher.execute(query).<Node>columnAs("n"));
+            tx.success();
+            return result;
+        }
     }
 
     public static void toFile() {
@@ -120,7 +124,7 @@ public class DotExportService {
         StackTraceElement e = t.getStackTrace()[1];
         String className = e.getClassName();
         String methodName = e.getMethodName();
-        File f = new File("target", className + "_" + methodName + ".gv");
+        File f = new File("target", className + "_" + methodName + "_" + e.getLineNumber() + ".gv");
 
         toFile(f, "START n=node(*) return n");
     }
@@ -165,14 +169,14 @@ public class DotExportService {
     }
 
     public static void toFile(File f, String query) {
-        try (Transaction ignored = gds.beginTx()) {
+        try {
             //noinspection ResultOfMethodCallIgnored
             f.getParentFile().mkdirs();
             Writer fo = new FileWriter(f);
             fo.write(export(query));
             fo.close();
-        } catch (IOException e1) {
-            throw new RuntimeException(e1);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
