@@ -2,8 +2,7 @@ package com.google.inject.extensions.neo4j.util;
 
 import com.google.gson.GsonBuilder;
 import com.google.inject.Inject;
-import org.hamcrest.Description;
-import org.hamcrest.TypeSafeMatcher;
+import com.google.inject.extensions.neo4j.GuicedExecutionEngine;
 import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.graphdb.*;
 
@@ -13,18 +12,16 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.*;
 
-import static ch.lambdaj.Lambda.join;
-import static ch.lambdaj.Lambda.selectFirst;
 import static org.neo4j.graphdb.Direction.OUTGOING;
 import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
 import static org.neo4j.helpers.collection.IteratorUtil.asIterable;
 
 public class DotExportService {
 
-    public static final Set<ClusterStrategy> clusterStrategies = new HashSet<>();
+    public static final Set<ClusterStrategy<Node>> clusterStrategies = new HashSet<>();
     public static final Set<FormatStrategy<Node>> highlightStrategies = new HashSet<>();
     public static final Set<FormatStrategy<Relationship>> reverseLink = new HashSet<>();
-    @Inject private static ExecutionEngine cypher;
+    @Inject private static GuicedExecutionEngine cypher;
     @Inject private static GraphDatabaseService gds;
 
     public static String export(Iterator<Node> allNodes) {
@@ -42,10 +39,9 @@ public class DotExportService {
 
         for (final Node node : nodes) {
 
-            ClusterStrategy<Node> clusterStrategy = selectFirst(clusterStrategies, new Matcher<>(node));
-
-            if (clusterStrategy != null) {
-                String type = clusterStrategy.clusterName(node);
+            Optional<ClusterStrategy<Node>> strategy = clusterStrategies.stream().filter(x -> x.matches(node)).findFirst();
+            if (strategy.isPresent()) {
+                String type = strategy.get().clusterName(node);
                 if (!cluster.containsKey(type)) {
                     cluster.put(type, new StringBuilder());
                 }
@@ -53,17 +49,15 @@ public class DotExportService {
             } else
                 appNode(node, sb);
         }
-        for (String sg : cluster.keySet()) {
-            sb.append("subgraph cluster_").append(sg).append(" { \n").append(cluster.get(sg)).append("}\n");
-        }
+        cluster.keySet().forEach(sg ->
+                sb.append("subgraph cluster_").append(sg).append(" { \n").append(cluster.get(sg)).append("}\n"));
     }
 
     private static void appNode(Node node, StringBuilder stringBuilder) {
-        FormatStrategy<Node> found = selectFirst(highlightStrategies, new Matcher<>(node));
+        Optional<FormatStrategy<Node>> strategy = highlightStrategies.stream().filter(s -> s.matches(node)).findFirst();
 
-        stringBuilder
-                .append("_").append(node.getId()).append(" ").append(
-                formatProperties(node, false, found != null)).append(";\n");
+        stringBuilder.append("_").append(node.getId())
+                .append(" ").append(formatProperties(node, false, strategy.isPresent())).append(";\n");
     }
 
     private static void appendRelationships(StringBuilder sb, Collection<Node> nodes) {
@@ -77,7 +71,6 @@ public class DotExportService {
             }
         }
 
-
         for (Relationship rel : rels) {
             Node startNode = rel.getStartNode();
             Node endNode = rel.getEndNode();
@@ -86,7 +79,7 @@ public class DotExportService {
     }
 
     private static void appendRelationship(StringBuilder sb, Relationship rel, long startNodeId, long endNodeId) {
-        final boolean isReverse = selectFirst(reverseLink, new Matcher<>(rel)) != null;
+        final boolean isReverse = reverseLink.stream().filter(r -> r.matches(rel)).findFirst().isPresent();
 
         if (isReverse) {
             sb.append("_").append(endNodeId).append(" -> _").append(startNodeId);
@@ -132,7 +125,7 @@ public class DotExportService {
     private static String formatProperties(PropertyContainer pc, boolean reverse, boolean mark, String... lines) {
         if (!pc.getPropertyKeys().iterator().hasNext() && lines.length == 0) return "";
         return "[label=\" [" + id(pc) + "] " + (pc instanceof Node ? formatLabels((Node) pc) : "") + "\n" +
-                formatProperties(pc) + (lines.length > 0 ? join(lines, "\n") : "") + "\"" +
+                formatProperties(pc) + (lines.length > 0 ? String.join("\n", lines) : "") + "\"" +
                 (mark ? ",style=\"filled\"" : "") +
                 (reverse ? ",dir=back" : "") +
                 "]";
@@ -145,9 +138,7 @@ public class DotExportService {
 
     private static String formatLabels(Node pc) {
         StringBuilder builder = new StringBuilder();
-        for (Label label : pc.getLabels()) {
-            builder.append(":").append(label.name());
-        }
+        pc.getLabels().forEach(label -> builder.append(":").append(label.name()));
         return builder.toString();
     }
 
@@ -186,20 +177,5 @@ public class DotExportService {
 
     public interface ClusterStrategy<T> extends FormatStrategy<T> {
         String clusterName(Node node);
-    }
-
-    private static class Matcher<T> extends TypeSafeMatcher<FormatStrategy<T>> {
-        private final T e;
-
-        private Matcher(T e) {
-            this.e = e;
-        }
-
-        @Override public void describeTo(Description description) {
-        }
-
-        @Override public boolean matchesSafely(FormatStrategy<T> strategy) {
-            return strategy.matches(e);
-        }
     }
 }

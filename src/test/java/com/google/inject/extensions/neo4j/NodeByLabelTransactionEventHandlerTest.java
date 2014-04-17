@@ -6,8 +6,6 @@ import com.google.inject.Provides;
 import com.google.inject.extensions.neo4j.util.CypherExportService;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.event.TransactionEventHandler;
 
@@ -27,7 +25,7 @@ import static org.neo4j.helpers.collection.MapUtil.map;
  * @since 15.04.2014
  */
 public class NodeByLabelTransactionEventHandlerTest {
-    private ExecutionEngine cypher;
+    private GuicedExecutionEngine cypher;
 
     @Before public void setup() {
         Injector injector = createInjector(
@@ -45,7 +43,7 @@ public class NodeByLabelTransactionEventHandlerTest {
                     }
                 }
         );
-        cypher = injector.getInstance(ExecutionEngine.class);
+        cypher = injector.getInstance(GuicedExecutionEngine.class);
         cypher.execute("CYPHER 2.0 START n=node(*) OPTIONAL MATCH n-[o]-() DELETE o,n");
     }
 
@@ -78,7 +76,7 @@ public class NodeByLabelTransactionEventHandlerTest {
     }
 
     private void assertPresent(String key, long expectedCount) {
-        ExecutionResult result = cypher.execute("CYPHER 2.0 START n=node:ft(text={p}) RETURN count(*)", map("p", key));
+        MutableResourceIterable<ResultMap> result = cypher.execute("CYPHER 2.0 START n=node:ft(text={p}) RETURN count(*)", map("p", key));
         assertEquals("index for " + key, expectedCount, result.columnAs("count(*)").next());
     }
 }

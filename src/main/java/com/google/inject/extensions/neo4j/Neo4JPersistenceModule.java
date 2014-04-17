@@ -28,7 +28,7 @@ public abstract class Neo4JPersistenceModule extends AbstractModule {
         requestInjection(tx);
         bindInterceptor(annotatedWith(Transactional.class), any(), tx);
         bindInterceptor(any(), annotatedWith(Transactional.class), tx);
-        bind(ExecutionEngine.class).to(GuicedExecutionEngine.class);
+        bind(TransactionInterceptor.class).toInstance(tx);
 
         bindScope(Transactional.class, TRANSACTIONAL);
         bind(TransactionScope.class).toInstance(TRANSACTIONAL);

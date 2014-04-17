@@ -5,13 +5,12 @@ import com.google.inject.Injector;
 import com.google.inject.extensions.neo4j.util.CypherExportService;
 import org.junit.Before;
 import org.junit.Test;
-import org.neo4j.cypher.javacompat.ExecutionEngine;
 
 import static com.google.inject.Guice.createInjector;
 
 public class CypherExportTest {
 
-    private ExecutionEngine cypher;
+    private GuicedExecutionEngine cypher;
 
     @Before public void setup() {
         Injector injector = createInjector(new ImpermanentNeo4JPersistenceModule(), new AbstractModule() {
@@ -19,7 +18,7 @@ public class CypherExportTest {
                 requestStaticInjection(CypherExportService.class);
             }
         });
-        cypher = injector.getInstance(ExecutionEngine.class);
+        cypher = injector.getInstance(GuicedExecutionEngine.class);
         cypher.execute("CYPHER 2.0 START n=node(*) OPTIONAL MATCH n-[o]-() DELETE o,n");
     }
 
@@ -28,8 +27,8 @@ public class CypherExportTest {
         cypher.execute("CYPHER 2.0 CREATE INDEX ON :Matrix(name)");
         cypher.execute("CYPHER 2.0 CREATE CONSTRAINT ON (i:Crew) ASSERT i.name IS UNIQUE");
         cypher.execute("CYPHER 2.0 CREATE " +
-                "(:Crew { name: 'Trinity' })<-[:LOVES]-(:Crew { name:'Neo' })-[:KNOWS {since: 1990}]->(:Crew { name: 'Morpheus' })," +
-                "(:Crew:Matrix { name: 'Cypher' })"
+                        "(:Crew { name: 'Trinity' })<-[:LOVES]-(:Crew { name:'Neo' })-[:KNOWS {since: 1990}]->(:Crew { name: 'Morpheus' })," +
+                        "(:Crew:Matrix { name: 'Cypher' })"
         );
 
         CypherExportService.assertGraphConstraintsEquals("CREATE CONSTRAINT ON (c:Crew) ASSERT c.name IS UNIQUE;\n" +

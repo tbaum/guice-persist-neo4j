@@ -1,11 +1,10 @@
 package com.google.inject.extensions.neo4j;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class ListResult<E extends Serializable> implements Serializable {
+public class ListResult<E> {
 
     private final List<E> list;
     private final int total;

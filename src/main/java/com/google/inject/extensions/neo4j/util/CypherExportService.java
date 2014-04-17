@@ -1,6 +1,5 @@
 package com.google.inject.extensions.neo4j.util;
 
-import ch.lambdaj.function.convert.Converter;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
 import org.junit.Assert;
@@ -10,8 +9,7 @@ import org.neo4j.graphdb.schema.IndexDefinition;
 
 import java.util.*;
 
-import static ch.lambdaj.Lambda.convert;
-import static ch.lambdaj.Lambda.join;
+import static java.lang.String.join;
 import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
 import static org.neo4j.tooling.GlobalGraphOperations.at;
 
@@ -35,11 +33,11 @@ public class CypherExportService {
         return new Exporter(gdb).export();
     }
 
-    private static class Exporter {
+    public static class Exporter {
         private final GraphDatabaseService gdb;
         private final IdResolver idResolver = new IdResolver();
 
-        private Exporter(GraphDatabaseService gdb) {
+        public Exporter(GraphDatabaseService gdb) {
             this.gdb = gdb;
         }
 
@@ -97,7 +95,7 @@ public class CypherExportService {
             final List<String> result = new ArrayList<>();
             for (IndexDefinition index : gdb.schema().getIndexes()) {
                 if (!index.isConstraintIndex()) {
-                    result.add("CREATE INDEX ON :" + index.getLabel() + "(" + join(index.getPropertyKeys(), ",") + ");");
+                    result.add("CREATE INDEX ON :" + index.getLabel() + "(" + join(",", index.getPropertyKeys()) + ");");
                 }
             }
             addSortedResult(sb, result);
@@ -111,11 +109,7 @@ public class CypherExportService {
         }
 
         private String appendNodes(final Collection<Node> allNodes) {
-            return join(convert(allNodes, new Converter<Node, String>() {
-                @Override public String convert(Node node) {
-                    return appendNode(node);
-                }
-            }), ",\n");
+            return join(",\n", asCollection(allNodes.stream().map(this::appendNode).iterator()));
         }
 
         private String appendNode(Node node) {
@@ -140,7 +134,7 @@ public class CypherExportService {
 
                 Collections.sort(rels);
                 if (sb.length() > 0) sb.append(",\n");
-                sb.append(join(rels, ",\n"));
+                sb.append(join(",\n", rels));
             }
             return sb.toString();
         }
@@ -177,11 +171,7 @@ public class CypherExportService {
         }
 
         private void formatLabels(StringBuilder sb, Node n) {
-            final Iterable<Label> labels = n.getLabels();
-            final Iterator<Label> iterator = labels.iterator();
-            if (iterator.hasNext()) {
-                sb.append(":").append(join(iterator, ":"));
-            }
+            n.getLabels().forEach(label -> sb.append(":").append(label));
         }
     }
 
