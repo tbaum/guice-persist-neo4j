@@ -1,5 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.google.code.guice-persist-neo4j</groupId>
     <artifactId>guice-persist-neo4j</artifactId>
@@ -13,9 +12,11 @@
     </properties>
 
     <scm>
-        <connection>scm:git:https://code.google.com/p/guice-persist-neo4j/</connection>
-        <url>scm:git:https://code.google.com/p/guice-persist-neo4j/</url>
-        <tag>HEAD</tag>
+        <!--<connection>scm:git:https://code.google.com/p/guice-persist-neo4j/</connection>-->
+        <!--<url>scm:git:https://code.google.com/p/guice-persist-neo4j/</url>-->
+        <connection>scm:git:git@github.com:tbaum/atns-guice-persist-neo4j.git</connection>
+        <url>scm:git:git@github.com:tbaum/atns-guice-persist-neo4j.git</url>
+        <tag>guice-persist-neo4j-1.2.7</tag>
     </scm>
 
     <dependencies>
