@@ -2,9 +2,13 @@ package com.google.inject.extensions.neo4j.handler;
 
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.event.PropertyEntry;
 import org.neo4j.graphdb.event.TransactionData;
 import org.neo4j.graphdb.event.TransactionEventHandler;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * @author tbaum
@@ -19,24 +23,27 @@ public abstract class NodeByLabelTransactionEventHandler implements TransactionE
     }
 
     @Override public Object beforeCommit(TransactionData data) throws Exception {
-        data.deletedNodes().forEach(this::onDelete);
-        data.createdNodes().forEach(this::update);
-        data.assignedNodeProperties().forEach(this::update);
-        data.removedNodeProperties().forEach(this::update);
+        Set<Node> updated = new HashSet<>();
+        Set<Node> deleted = new HashSet<>();
+
+        data.deletedNodes().forEach(deleted::add);
+        data.removedLabels().forEach((l) -> {
+            if (l.label().equals(label)) deleted.add(l.node());
+        });
+
+        data.createdNodes().forEach(updated::add);
+        data.assignedNodeProperties().forEach((p) -> updated.add(p.entity()));
+        data.removedNodeProperties().forEach((p) -> updated.add(p.entity()));
+
+        data.assignedLabels().forEach((l) -> {
+            if (l.label().equals(label)) updated.add(l.node());
+        });
+
+        onChange(updated.stream().filter((n) -> n.hasLabel(label)).collect(Collectors.toSet()), deleted);
         return null;
     }
 
-    private void update(PropertyEntry<Node> entry) {
-        update(entry.entity());
-    }
-
-    private void update(Node node) {
-        if (node.hasLabel(label)) onUpdate(node);
-    }
-
-    protected abstract void onUpdate(Node node);
-
-    protected abstract void onDelete(Node node);
+    protected abstract void onChange(Collection<Node> updated, Collection<Node> deleted);
 
     @Override public void afterCommit(TransactionData data, Object state) {
     }

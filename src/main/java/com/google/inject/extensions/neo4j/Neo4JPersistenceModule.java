@@ -3,11 +3,9 @@ package com.google.inject.extensions.neo4j;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.event.TransactionEventHandler;
-import org.neo4j.kernel.EmbeddedReadOnlyGraphDatabase;
 
 import java.util.Collection;
 
@@ -35,7 +33,8 @@ public abstract class Neo4JPersistenceModule extends AbstractModule {
         bind(Transaction.class).toProvider(TransactionScope.transactionProvider()).in(TRANSACTIONAL);
     }
 
-    @Provides @Singleton GraphDatabaseService getGraphDatabaseService(Collection<TransactionEventHandler> handlers) {
+    @Provides @Singleton GraphDatabaseService getGraphDatabaseService(Collection<TransactionEventHandler> handlers,
+                                                                      BackgroundWorker backgroundWorker) {
         final GraphDatabaseService graphDatabase = createGraphDatabase();
 
         getRuntime().addShutdownHook(new Thread() {
@@ -43,9 +42,9 @@ public abstract class Neo4JPersistenceModule extends AbstractModule {
                 graphDatabase.shutdown();
             }
         });
-//        handlers.forEach(graphDatabase::registerTransactionEventHandler);
+        handlers.forEach(graphDatabase::registerTransactionEventHandler);
 //        if (!(graphDatabase instanceof EmbeddedReadOnlyGraphDatabase)) {
-//            graphDatabase.registerTransactionEventHandler(new PatchIndexeTransactionEventHandler(graphDatabase));
+//            graphDatabase.registerTransactionEventHandler(new PatchIndexeTransactionEventHandler(graphDatabase, backgroundWorker));
 //        }
         return graphDatabase;
     }

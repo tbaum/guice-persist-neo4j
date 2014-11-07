@@ -26,6 +26,7 @@ import static org.neo4j.helpers.collection.MapUtil.map;
  */
 public class NodeByLabelTransactionEventHandlerTest {
     private GuicedExecutionEngine cypher;
+    private BackgroundWorker backgroundWorker;
 
     @Before public void setup() {
         Injector injector = createInjector(
@@ -33,8 +34,9 @@ public class NodeByLabelTransactionEventHandlerTest {
                     @Override protected void configure() {
                     }
 
-                    @Provides Collection<TransactionEventHandler> transactionEventHandler(Provider<GraphDatabaseService> gds) {
-                        return asList(fulltext(label("Crew"), gds, "ft", "text", "name", "addon"));
+                    @Provides Collection<TransactionEventHandler> transactionEventHandler(
+                            Provider<GraphDatabaseService> gds, Provider<BackgroundWorker> worker) {
+                        return asList(fulltext(gds, worker, label("Crew"), "ft", "text", "name", "addon"));
                     }
                 }),
                 new AbstractModule() {
@@ -44,11 +46,12 @@ public class NodeByLabelTransactionEventHandlerTest {
                 }
         );
         cypher = injector.getInstance(GuicedExecutionEngine.class);
+        backgroundWorker = injector.getInstance(BackgroundWorker.class);
         cypher.execute("CYPHER 2.0 START n=node(*) OPTIONAL MATCH n-[o]-() DELETE o,n");
     }
 
     @Test
-    public void testExport() {
+    public void testExport() throws InterruptedException {
         cypher.execute("CYPHER 2.0 CREATE " +
                         "(:Crew { name: 'Trinity' }),(:Crew { name:'Neo' })," +
                         "(:Matrix { name: 'Cypher' }),(:Matrix {name:'Neo1'}), (:Matrix {name:'Neo2'})"
@@ -57,26 +60,24 @@ public class NodeByLabelTransactionEventHandlerTest {
         cypher.execute("CYPHER 2.0 MATCH (n:Crew {name:'Trinity'}) SET n.addon='favorite'");
         cypher.execute("CYPHER 2.0 MATCH (n:Crew {name:'Trinity'}) SET n.name='trinity'");
         cypher.execute("CYPHER 2.0 MATCH (n:Crew {name:'Neo'}) OPTIONAL MATCH n-[r]-() DELETE r,n");
-
-        //workarround for adding labels
-        cypher.execute("CYPHER 2.0 MATCH (n:Matrix {name:'Neo1'}) set n:Crew SET n._trigger_update=true REMOVE n._trigger_update");
         cypher.execute("CYPHER 2.0 MATCH (n:Matrix {name:'Neo2'}) SET n:Crew");
-
         cypher.execute("CYPHER 2.0 MATCH (n:Matrix {name:'Cypher'}) SET n.name='cypher' ");
 
+        backgroundWorker.waitForQueue();
 
         assertPresent("Cypher", 0);
         assertPresent("cypher", 0);
         assertPresent("Neo", 0);
-        assertPresent("Neo1", 1);
-        // TODO assertPresent("Neo2", 1);
+        assertPresent("Neo1", 0);
+        assertPresent("Neo2", 1);
         assertPresent("trinity", 1);
         assertPresent("favorite", 1);
         assertPresent("Trinity", 0);
     }
 
-    private void assertPresent(String key, long expectedCount) {
-        MutableResourceIterable<ResultMap> result = cypher.execute("CYPHER 2.0 START n=node:ft(text={p}) RETURN count(*)", map("p", key));
-        assertEquals("index for " + key, expectedCount, result.columnAs("count(*)").next());
+    private void assertPresent(String key, long expectedCount) throws InterruptedException {
+        assertEquals("index for " + key, expectedCount,
+                cypher.<Number>singleResult("CYPHER 2.0 START n=node:ft(text={p}) RETURN count(*)", map("p", key),
+                        (r) -> r.get("count(*)")));
     }
 }

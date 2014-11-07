@@ -1,14 +1,21 @@
 package com.google.inject.extensions.neo4j.handler;
 
+import com.google.inject.extensions.neo4j.BackgroundWorker;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.index.Index;
 
 import javax.inject.Provider;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 import static org.neo4j.graphdb.index.IndexManager.PROVIDER;
 import static org.neo4j.helpers.collection.MapUtil.stringMap;
 
@@ -19,39 +26,67 @@ import static org.neo4j.helpers.collection.MapUtil.stringMap;
 public class FulltextIndexTransactionEventHandler extends NodeByLabelTransactionEventHandler {
 
     private final Provider<GraphDatabaseService> gds;
+    private final Provider<BackgroundWorker> worker;
     private final String name;
     private final String key;
     private final List<String> properties;
 
-    public FulltextIndexTransactionEventHandler(Label label, Provider<GraphDatabaseService> gds, String name,
-                                                String key, String... properties) {
+    private FulltextIndexTransactionEventHandler(Provider<GraphDatabaseService> gds, Provider<BackgroundWorker> worker,
+                                                 Label label, String name, String key, String... properties) {
         super(label);
         this.gds = gds;
+        this.worker = worker;
         this.name = name;
         this.key = key;
         this.properties = asList(properties);
     }
 
-    public static NodeByLabelTransactionEventHandler fulltext(Label label, Provider<GraphDatabaseService> gds,
-                                                              String name, String key, String... properties) {
-        return new FulltextIndexTransactionEventHandler(label, gds, name, key, properties);
+    public static NodeByLabelTransactionEventHandler fulltext(Provider<GraphDatabaseService> gds,
+                                                              Provider<BackgroundWorker> worker,
+                                                              Label label, String name, String key, String... properties) {
+        return new FulltextIndexTransactionEventHandler(gds, worker, label, name, key, properties);
     }
 
     protected Index<Node> index() {
         return gds.get().index().forNodes(name, stringMap(PROVIDER, "lucene", "type", "fulltext"));
     }
 
-    @Override protected void onUpdate(Node node) {
-        final Index<Node> index = index();
-        index.remove(node);
-        properties.stream()
-                .map(name -> node.getProperty(name, null))
-                .filter(value -> value != null)
-                .forEach(value -> index.add(node, key, value));
+    @Override protected void onChange(Collection<Node> updated, Collection<Node> deleted) {
+        Map<Node, List<Object>> vals = Stream.concat(
+                updated.stream()
+                        .map((node) -> new Tuple<>(node,
+                                properties.stream()
+                                        .map(name -> node.getProperty(name, null))
+                                        .filter(value -> value != null)
+                                        .collect(toList()))),
+                deleted.stream()
+                        .map((node) -> new Tuple<>(node, asList())))
+                .collect(toMap(t -> t.a, t -> t.b));
+
+
+        worker.get().addJob(() -> {
+
+            try (Transaction tx = gds.get().beginTx()) {
+                final Index<Node> index = index();
+
+                for (Map.Entry<Node, List<Object>> e : vals.entrySet()) {
+                    Node node = e.getKey();
+                    index.remove(node);
+                    e.getValue().forEach(value -> index.add(node, key, value));
+                }
+                tx.success();
+            }
+        });
     }
 
-    @Override protected void onDelete(Node node) {
-        index().remove(node);
+    static class Tuple<A, B> {
+        final A a;
+        final B b;
+
+        public Tuple(A a, B b) {
+            this.a = a;
+            this.b = b;
+        }
     }
 
 }
