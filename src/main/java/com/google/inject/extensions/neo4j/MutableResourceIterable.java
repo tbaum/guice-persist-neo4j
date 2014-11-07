@@ -3,10 +3,9 @@ package com.google.inject.extensions.neo4j;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.ResourceIterator;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * @author tbaum
@@ -15,12 +14,16 @@ import java.util.stream.StreamSupport;
 public interface MutableResourceIterable<T> extends ResourceIterable<T> {
 
     default Stream<T> stream() {
-        return StreamSupport.stream(spliterator(), false);
+        return asList().stream();
     }
 
     default List<T> asList() {
-        return stream().collect(Collectors.toList());
+        List<T> list = new ArrayList<>();
+        try (ResourceIterator<T> t = iterator()) {
+            t.forEachRemaining(list::add);
+        }
+        return list;
     }
 
-    <T> ResourceIterator<T> columnAs(String n);
+    <C> ResourceIterator<C> columnAs(String n);
 }

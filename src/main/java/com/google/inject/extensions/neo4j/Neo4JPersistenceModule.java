@@ -43,10 +43,10 @@ public abstract class Neo4JPersistenceModule extends AbstractModule {
                 graphDatabase.shutdown();
             }
         });
-        handlers.forEach(graphDatabase::registerTransactionEventHandler);
-        if (!(graphDatabase instanceof EmbeddedReadOnlyGraphDatabase)) {
-            graphDatabase.registerTransactionEventHandler(new PatchIndexeTransactionEventHandler(graphDatabase));
-        }
+//        handlers.forEach(graphDatabase::registerTransactionEventHandler);
+//        if (!(graphDatabase instanceof EmbeddedReadOnlyGraphDatabase)) {
+//            graphDatabase.registerTransactionEventHandler(new PatchIndexeTransactionEventHandler(graphDatabase));
+//        }
         return graphDatabase;
     }
 
