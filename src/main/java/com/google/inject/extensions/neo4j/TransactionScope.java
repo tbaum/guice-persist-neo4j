@@ -16,11 +16,9 @@ public class TransactionScope implements Scope, AutoCloseable {
     }
 
     public static Provider<Transaction> transactionProvider() {
-        return new Provider<Transaction>() {
-            public Transaction get() {
-                throw new IllegalStateException("If you got here then it means that your code asked for scoped " +
-                        "object which should have been explicitly initialized in this scope");
-            }
+        return () -> {
+            throw new IllegalStateException("If you got here then it means that your code asked for scoped " +
+                    "object which should have been explicitly initialized in this scope");
         };
     }
 
@@ -47,21 +45,27 @@ public class TransactionScope implements Scope, AutoCloseable {
     }
 
     public <T> Provider<T> scope(final Key<T> key, final Provider<T> unscoped) {
-        return new Provider<T>() {
-            @SuppressWarnings("unchecked") public T get() {
-
-                LinkedList<Transaction> current = value.get();
-                if (current == null) {
-                    throw new IllegalStateException();
-//                    current = (LinkedList) unscoped.get();
-//                    value.set(current);
-                }
-                return (T) current.getLast();
+        return () -> {
+            LinkedList<Transaction> current = value.get();
+            if (current == null) {
+                throw new IllegalStateException();
             }
+            //noinspection unchecked
+            return (T) current.getLast();
         };
     }
 
     @Override public void close() {
         exit();
+    }
+
+    boolean inScope() {
+        LinkedList<Transaction> transactions = value.get();
+        return transactions != null && !transactions.isEmpty();
+    }
+
+    public Integer getCurrentDepth() {
+        LinkedList<Transaction> transactions = value.get();
+        return transactions != null ? transactions.size() : null;
     }
 }

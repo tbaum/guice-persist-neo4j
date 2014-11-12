@@ -4,7 +4,6 @@ import com.google.inject.extensions.neo4j.BackgroundWorker;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.index.Index;
 
 import javax.inject.Provider;
@@ -65,16 +64,11 @@ public class FulltextIndexTransactionEventHandler extends NodeByLabelTransaction
 
 
         worker.get().addJob(() -> {
-
-            try (Transaction tx = gds.get().beginTx()) {
-                final Index<Node> index = index();
-
-                for (Map.Entry<Node, List<Object>> e : vals.entrySet()) {
-                    Node node = e.getKey();
-                    index.remove(node);
-                    e.getValue().forEach(value -> index.add(node, key, value));
-                }
-                tx.success();
+            final Index<Node> index = index();
+            for (Map.Entry<Node, List<Object>> e : vals.entrySet()) {
+                Node node = e.getKey();
+                index.remove(node);
+                e.getValue().forEach(value -> index.add(node, key, value));
             }
         });
     }

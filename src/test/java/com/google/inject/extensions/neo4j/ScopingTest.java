@@ -4,6 +4,7 @@ import com.google.inject.Injector;
 import com.google.inject.ProvisionException;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.kernel.PlaceboTransaction;
@@ -33,7 +34,7 @@ public class ScopingTest {
         Assert.assertEquals(TopLevelTransaction.class, tx.getClass());
     }
 
-    @Test
+    @Test @Ignore
     public void testSimpleScoping() {
         final Transaction[] tx = injector.getInstance(D.class).inTx();
         Assert.assertEquals(TopLevelTransaction.class, tx[0].getClass());

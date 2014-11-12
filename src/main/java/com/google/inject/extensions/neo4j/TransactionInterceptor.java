@@ -20,11 +20,21 @@ public class TransactionInterceptor implements MethodInterceptor {
     @Inject private final Provider<TransactionScope> transactionScopeProvider = null;
 
     @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
-        LOG.trace("create new transaction");
+        TransactionScope transactionScope = transactionScopeProvider.get();
+        if (transactionScope.inScope()) {
+            LOG.debug("join transaction {}", transactionScope.getCurrentDepth());
+            try {
+                return methodInvocation.proceed();
+            } finally {
+                LOG.debug("leaving transaction {}", transactionScope.getCurrentDepth());
+            }
+        }
+
+        LOG.debug("create new transaction");
         try (Transaction transaction = gdb.get().beginTx()) {
-            try (TransactionScope ignored = transactionScopeProvider.get().enter(transaction)) {
+            try (TransactionScope ignored = transactionScope.enter(transaction)) {
                 final Object result = methodInvocation.proceed();
-                LOG.trace("marking transaction success");
+                LOG.debug("marking transaction success");
                 transaction.success();
                 return result;
             } catch (Throwable throwable) {
@@ -34,6 +44,8 @@ public class TransactionInterceptor implements MethodInterceptor {
                     transaction.success();
                 }
                 throw throwable;
+            } finally {
+                LOG.debug("leaving transaction");
             }
         }
     }

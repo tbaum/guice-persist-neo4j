@@ -111,11 +111,17 @@ public class GuicedExecutionEngine {
                                                 Map<String, Object> parameter) {
 
         String countQuery = whereQuery + " RETURN count(" + countColumn + ") as count";
-        String listQuery = whereQuery + " " + returnColumns + " skip {___skip} limit {___limit}";
-
+        String listQuery = whereQuery + " " + returnColumns;
         parameter = new HashMap<>(parameter);
-        parameter.put("___skip", start);
-        parameter.put("___limit", limit);
+
+        if (start > 0) {
+            listQuery += " skip {___skip}";
+            parameter.put("___skip", start);
+        }
+        if (limit != Integer.MAX_VALUE) {
+            listQuery += " limit {___limit}";
+            parameter.put("___limit", limit);
+        }
 
         return new ListResult<>(
                 execute(listQuery, parameter, converter).asList(),

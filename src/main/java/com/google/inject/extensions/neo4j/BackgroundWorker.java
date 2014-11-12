@@ -1,11 +1,11 @@
 package com.google.inject.extensions.neo4j;
 
 import org.neo4j.graphdb.GraphDatabaseService;
+import org.neo4j.graphdb.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import javax.inject.Provider;
 import javax.inject.Singleton;
 import java.util.LinkedList;
 
@@ -20,7 +20,7 @@ public class BackgroundWorker extends Thread {
     private static int instance = 0;
     private final LinkedList<Runnable> queue;
 
-    @Inject public BackgroundWorker() {
+    @Inject public BackgroundWorker(GraphDatabaseService gds) {
         this.queue = new LinkedList<>();
         Thread thread = new Thread() {
             @Override
@@ -33,8 +33,9 @@ public class BackgroundWorker extends Thread {
                             while (queue.isEmpty()) queue.wait();
                             work = queue.getFirst();
                         }
-                        try {
+                        try (Transaction tx = gds.beginTx()) {
                             work.run();
+                            tx.success();
                         } catch (Exception e) {
                             LOG.error(e.getMessage(), e);
                         }
