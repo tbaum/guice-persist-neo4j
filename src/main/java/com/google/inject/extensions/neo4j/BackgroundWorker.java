@@ -2,6 +2,8 @@ package com.google.inject.extensions.neo4j;
 
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.event.ErrorState;
+import org.neo4j.graphdb.event.KernelEventHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +32,15 @@ public class BackgroundWorker extends Thread {
                         Runnable work;
 
                         synchronized (queue) {
-                            while (queue.isEmpty()) queue.wait();
+                            while (queue.isEmpty()) {
+                                queue.wait();
+
+                                // shutdown
+                                if (isInterrupted() && queue.isEmpty()) {
+                                    LOG.info("shutdown worker");
+                                    return;
+                                }
+                            }
                             work = queue.getFirst();
                         }
                         try (Transaction tx = gds.beginTx()) {
@@ -52,6 +62,31 @@ public class BackgroundWorker extends Thread {
 
         thread.setName("BackgroundWorker:" + (instance++));
         thread.start();
+
+        gds.registerKernelEventHandler(new KernelEventHandler() {
+            @Override public void beforeShutdown() {
+                shutdown();
+            }
+
+            @Override public void kernelPanic(ErrorState error) {
+                shutdown();
+            }
+
+            @Override public Object getResource() {
+                return null;
+            }
+
+            @Override public ExecutionOrder orderComparedTo(KernelEventHandler other) {
+                return ExecutionOrder.DOESNT_MATTER;
+            }
+        });
+    }
+
+    public void shutdown() {
+        synchronized (queue) {
+            interrupt();
+            queue.notifyAll();
+        }
     }
 
     public void addJob(Runnable job) {

@@ -33,8 +33,7 @@ public abstract class Neo4JPersistenceModule extends AbstractModule {
         bind(Transaction.class).toProvider(TransactionScope.transactionProvider()).in(TRANSACTIONAL);
     }
 
-    @Provides @Singleton GraphDatabaseService getGraphDatabaseService(Collection<TransactionEventHandler> handlers,
-                                                                      BackgroundWorker backgroundWorker) {
+    @Provides @Singleton GraphDatabaseService getGraphDatabaseService(Collection<TransactionEventHandler> handlers) {
         final GraphDatabaseService graphDatabase = createGraphDatabase();
 
         getRuntime().addShutdownHook(new Thread() {
