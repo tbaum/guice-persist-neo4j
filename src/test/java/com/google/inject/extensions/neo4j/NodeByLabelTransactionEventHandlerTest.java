@@ -63,8 +63,6 @@ public class NodeByLabelTransactionEventHandlerTest {
         cypher.execute("CYPHER 2.0 MATCH (n:Matrix {name:'Neo2'}) SET n:Crew");
         cypher.execute("CYPHER 2.0 MATCH (n:Matrix {name:'Cypher'}) SET n.name='cypher' ");
 
-        backgroundWorker.waitForQueue();
-
         assertPresent("Cypher", 0);
         assertPresent("cypher", 0);
         assertPresent("Neo", 0);

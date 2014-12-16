@@ -24,44 +24,40 @@ public class BackgroundWorker extends Thread {
 
     @Inject public BackgroundWorker(GraphDatabaseService gds) {
         this.queue = new LinkedList<>();
-        Thread thread = new Thread() {
-            @Override
-            public void run() {
-                while (true) {
-                    try {
-                        Runnable work;
+        new Thread(() -> {
+            while (true) {
+                try {
+                    final Runnable work;
+                    LOG.debug("waiting");
+                    synchronized (queue) {
+                        while (queue.isEmpty()) {
+                            queue.wait();
 
-                        synchronized (queue) {
-                            while (queue.isEmpty()) {
-                                queue.wait();
-
-                                // shutdown
-                                if (isInterrupted() && queue.isEmpty()) {
-                                    LOG.info("shutdown worker");
-                                    return;
-                                }
+                            // shutdown
+                            if (isInterrupted() && queue.isEmpty()) {
+                                LOG.info("shutdown worker");
+                                return;
                             }
-                            work = queue.getFirst();
                         }
-                        try (Transaction tx = gds.beginTx()) {
-                            work.run();
-                            tx.success();
-                        } catch (Exception e) {
-                            LOG.error(e.getMessage(), e);
-                        }
-                        synchronized (queue) {
-                            queue.remove(work);
-                            queue.notifyAll();
-                        }
-                    } catch (InterruptedException ie) {
-                        break;
+                        work = queue.getFirst();
                     }
+                    LOG.debug("run job {}", work);
+
+                    try (Transaction tx = gds.beginTx()) {
+                        work.run();
+                        tx.success();
+                    } catch (Exception e) {
+                        LOG.error(e.getMessage(), e);
+                    }
+                    synchronized (queue) {
+                        queue.remove(work);
+                        queue.notifyAll();
+                    }
+                } catch (InterruptedException ie) {
+                    break;
                 }
             }
-        };
-
-        thread.setName("BackgroundWorker:" + (instance++));
-        thread.start();
+        }, "BackgroundWorker:" + (instance++)).start();
 
         gds.registerKernelEventHandler(new KernelEventHandler() {
             @Override public void beforeShutdown() {
@@ -96,7 +92,7 @@ public class BackgroundWorker extends Thread {
         }
     }
 
-    public void waitForQueue() throws InterruptedException {
+    protected void _waitForQueue() throws InterruptedException {
         synchronized (queue) {
             while (!queue.isEmpty()) queue.wait();
         }

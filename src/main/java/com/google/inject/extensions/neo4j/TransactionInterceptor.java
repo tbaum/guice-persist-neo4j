@@ -17,6 +17,7 @@ public class TransactionInterceptor implements MethodInterceptor {
 
     private static final Logger LOG = LoggerFactory.getLogger(TransactionInterceptor.class);
     @Inject private final Provider<GraphDatabaseService> gdb = null;
+    @Inject private final Provider<BackgroundWorker> backgroundWorker = null;
     @Inject private final Provider<TransactionScope> transactionScopeProvider = null;
 
     @Override public Object invoke(MethodInvocation methodInvocation) throws Throwable {
@@ -31,12 +32,12 @@ public class TransactionInterceptor implements MethodInterceptor {
         }
 
         LOG.debug("create new transaction");
+        final Object result;
         try (Transaction transaction = gdb.get().beginTx()) {
             try (TransactionScope ignored = transactionScope.enter(transaction)) {
-                final Object result = methodInvocation.proceed();
+                result = methodInvocation.proceed();
                 LOG.debug("marking transaction success");
                 transaction.success();
-                return result;
             } catch (Throwable throwable) {
                 final Class<? extends Throwable> throwableClass = throwable.getClass();
                 if (noRollback(methodInvocation, throwableClass)) {
@@ -48,6 +49,9 @@ public class TransactionInterceptor implements MethodInterceptor {
                 LOG.debug("leaving transaction");
             }
         }
+
+        backgroundWorker.get()._waitForQueue();
+        return result;
     }
 
     private boolean noRollback(MethodInvocation methodInvocation, Class<? extends Throwable> throwable) {
