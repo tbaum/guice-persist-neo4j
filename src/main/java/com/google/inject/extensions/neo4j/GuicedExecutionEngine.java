@@ -1,9 +1,10 @@
 package com.google.inject.extensions.neo4j;
 
-import org.neo4j.cypher.javacompat.ExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionResult;
+import org.neo4j.cypher.ExecutionEngine;
+import org.neo4j.cypher.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.ResourceIterator;
+import org.neo4j.kernel.impl.util.StringLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +30,7 @@ public class GuicedExecutionEngine {
 
     @Inject
     public GuicedExecutionEngine(GraphDatabaseService gds) {
-        delegate = new ExecutionEngine(gds);
+        delegate = new ExecutionEngine(gds, StringLogger.SYSTEM);
     }
 
     @Transactional
@@ -58,12 +59,12 @@ public class GuicedExecutionEngine {
             }
 
             @Override public <E> ResourceIterator<E> columnAs(String n) {
-                return _result().columnAs(n);
+                return _result().javaColumnAs(n);
             }
 
 
             @Override public ResourceIterator<T> iterator() {
-                return MutableResourceIterator.convert(_result().iterator(), compose);
+                return MutableResourceIterator.convert(_result().javaIterator(), compose);
             }
         };
     }

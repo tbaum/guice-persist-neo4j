@@ -26,7 +26,6 @@ import static org.neo4j.helpers.collection.MapUtil.map;
  */
 public class NodeByLabelTransactionEventHandlerTest {
     private GuicedExecutionEngine cypher;
-    private BackgroundWorker backgroundWorker;
 
     @Before public void setup() {
         Injector injector = createInjector(
@@ -35,8 +34,8 @@ public class NodeByLabelTransactionEventHandlerTest {
                     }
 
                     @Provides Collection<TransactionEventHandler> transactionEventHandler(
-                            Provider<GraphDatabaseService> gds, Provider<BackgroundWorker> worker) {
-                        return asList(fulltext(gds, worker, label("Crew"), "ft", "text", "name", "addon"));
+                            Provider<GraphDatabaseService> gds) {
+                        return asList(fulltext(gds, label("Crew"), "ft", "text", "name", "addon"));
                     }
                 }),
                 new AbstractModule() {
@@ -46,7 +45,6 @@ public class NodeByLabelTransactionEventHandlerTest {
                 }
         );
         cypher = injector.getInstance(GuicedExecutionEngine.class);
-        backgroundWorker = injector.getInstance(BackgroundWorker.class);
         cypher.execute("CYPHER 2.0 START n=node(*) OPTIONAL MATCH n-[o]-() DELETE o,n");
     }
 
@@ -62,8 +60,6 @@ public class NodeByLabelTransactionEventHandlerTest {
         cypher.execute("CYPHER 2.0 MATCH (n:Crew {name:'Neo'}) OPTIONAL MATCH n-[r]-() DELETE r,n");
         cypher.execute("CYPHER 2.0 MATCH (n:Matrix {name:'Neo2'}) SET n:Crew");
         cypher.execute("CYPHER 2.0 MATCH (n:Matrix {name:'Cypher'}) SET n.name='cypher' ");
-
-        backgroundWorker.waitForQueue();
 
         assertPresent("Cypher", 0);
         assertPresent("cypher", 0);

@@ -1,6 +1,5 @@
 package com.google.inject.extensions.neo4j.handler;
 
-import com.google.inject.extensions.neo4j.BackgroundWorker;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
@@ -25,25 +24,22 @@ import static org.neo4j.helpers.collection.MapUtil.stringMap;
 public class FulltextIndexTransactionEventHandler extends NodeByLabelTransactionEventHandler {
 
     private final Provider<GraphDatabaseService> gds;
-    private final Provider<BackgroundWorker> worker;
     private final String name;
     private final String key;
     private final List<String> properties;
 
-    private FulltextIndexTransactionEventHandler(Provider<GraphDatabaseService> gds, Provider<BackgroundWorker> worker,
+    private FulltextIndexTransactionEventHandler(Provider<GraphDatabaseService> gds,
                                                  Label label, String name, String key, String... properties) {
         super(label);
         this.gds = gds;
-        this.worker = worker;
         this.name = name;
         this.key = key;
         this.properties = asList(properties);
     }
 
-    public static NodeByLabelTransactionEventHandler fulltext(Provider<GraphDatabaseService> gds,
-                                                              Provider<BackgroundWorker> worker,
-                                                              Label label, String name, String key, String... properties) {
-        return new FulltextIndexTransactionEventHandler(gds, worker, label, name, key, properties);
+    public static NodeByLabelTransactionEventHandler fulltext(Provider<GraphDatabaseService> gds, Label label,
+                                                              String name, String key, String... properties) {
+        return new FulltextIndexTransactionEventHandler(gds, label, name, key, properties);
     }
 
     protected Index<Node> index() {
@@ -62,15 +58,12 @@ public class FulltextIndexTransactionEventHandler extends NodeByLabelTransaction
                         .map((node) -> new Tuple<>(node, asList())))
                 .collect(toMap(t -> t.a, t -> t.b));
 
-
-        worker.get().addJob(() -> {
-            final Index<Node> index = index();
-            for (Map.Entry<Node, List<Object>> e : vals.entrySet()) {
-                Node node = e.getKey();
-                index.remove(node);
-                e.getValue().forEach(value -> index.add(node, key, value));
-            }
-        });
+        Index<Node> index = index();
+        for (Map.Entry<Node, List<Object>> e : vals.entrySet()) {
+            Node node = e.getKey();
+            index.remove(node);
+            e.getValue().forEach(value -> index.add(node, key, value));
+        }
     }
 
     static class Tuple<A, B> {
