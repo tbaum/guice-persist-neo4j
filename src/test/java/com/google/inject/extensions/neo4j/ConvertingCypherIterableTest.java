@@ -21,7 +21,7 @@ public class ConvertingCypherIterableTest {
         Injector injector = createInjector(new ImpermanentNeo4JPersistenceModule());
         cypher = injector.getInstance(GuicedExecutionEngine.class);
         try (ResourceIterator<Node> n = cypher.execute(
-                "CYPHER 2.1 CREATE (n)-[:REL]->(n1 {name:'n1'}),(n)-[:REL]->(n2 {name:'n2'}) RETURN n").columnAs("n")) {
+                "CREATE (n)-[:REL]->(n1 {name:'n1'}),(n)-[:REL]->(n2 {name:'n2'}) RETURN n").columnAs("n")) {
             ref = n.next();
         }
         System.err.println(ref);
@@ -29,8 +29,8 @@ public class ConvertingCypherIterableTest {
 
     @Test
     public void testNoResult() {
-        Iterable<Node> r = cypher.execute("CYPHER 2.1 START n=node({ref}) MATCH n-[:NOTHING]->r RETURN r",
-                map("ref", ref), (f) -> f.get("r"));
+        Iterable<Node> r = cypher.execute("MATCH n WHERE n={ref} MATCH n-[:NOTHING]->r RETURN r", map("ref", ref),
+                (f) -> f.get("r"));
 
         Iterator<Node> iterator = r.iterator();
 
@@ -39,8 +39,8 @@ public class ConvertingCypherIterableTest {
 
     @Test
     public void testMultipleResults() {
-        Iterable<Node> r = cypher.execute("CYPHER 2.1 START n=node({ref}) MATCH n-[:REL]->r RETURN r",
-                map("ref", ref), (f) -> f.get("r"));
+        Iterable<Node> r = cypher.execute("MATCH n WHERE n={ref} MATCH n-[:REL]->r RETURN r", map("ref", ref),
+                (f) -> f.get("r"));
 
         Iterator<Node> iterator = r.iterator();
 
@@ -53,7 +53,7 @@ public class ConvertingCypherIterableTest {
 
     @Test
     public void testSingleResult() {
-        Iterable<Node> r = cypher.execute("CYPHER 2.1 START n=node({ref}) MATCH n-[:REL]->r WHERE r.name='n1' RETURN r",
+        Iterable<Node> r = cypher.execute("MATCH n WHERE n={ref} MATCH n-[:REL]->r WHERE r.name='n1' RETURN r",
                 map("ref", ref), (f) -> f.get("r"));
 
         Iterator<Node> iterator = r.iterator();
@@ -63,10 +63,9 @@ public class ConvertingCypherIterableTest {
         assertFalse(iterator.hasNext());
     }
 
-
     @Test
     public void testSingleResult1() {
-        Node r = cypher.singleResult("CYPHER 2.1 START n=node({ref}) MATCH n-[:REL]->r WHERE r.name='n1' RETURN r",
+        Node r = cypher.singleResult("MATCH n WHERE n={ref} MATCH n-[:REL]->r WHERE r.name='n1' RETURN r",
                 map("ref", ref), (f) -> f.get("r"));
 
         assertNotNull(r);
@@ -74,10 +73,8 @@ public class ConvertingCypherIterableTest {
 
     @Test
     public void testSingleResult2() {
-        Node r = cypher.singleResult("CYPHER 2.1 START n=node({ref}) MATCH n-[:NOTHING]->r RETURN r",
-                map("ref", ref), (f) -> f.get("r"));
+        Node r = cypher.singleResult("MATCH n WHERE n={ref} MATCH n-[:NOTHING]->r RETURN r", map("ref", ref),
+                (f) -> f.get("r"));
         assertNull(r);
     }
-
-
 }

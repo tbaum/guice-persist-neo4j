@@ -119,7 +119,7 @@ public class DotExportService {
         String methodName = e.getMethodName();
         File f = new File("target", className + "_" + methodName + "_" + e.getLineNumber() + ".gv");
 
-        toFile(f, "START n=node(*) return n");
+        toFile(f, "MATCH (n) RETURN n");
     }
 
     private static String formatProperties(PropertyContainer pc, boolean reverse, boolean mark, String... lines) {

@@ -2,6 +2,8 @@ package com.google.inject.extensions.neo4j.handler;
 
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.event.LabelEntry;
+import org.neo4j.graphdb.event.PropertyEntry;
 import org.neo4j.graphdb.event.TransactionData;
 import org.neo4j.graphdb.event.TransactionEventHandler;
 
@@ -9,45 +11,71 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * @author tbaum
  * @since 15.04.2014
  */
-public abstract class NodeByLabelTransactionEventHandler implements TransactionEventHandler {
+public class NodeByLabelTransactionEventHandler implements TransactionEventHandler {
 
+    private final ThreadLocal<Boolean> active = ThreadLocal.withInitial(() -> false);
     private final Label label;
+    private final Consumer consumer;
 
-    public NodeByLabelTransactionEventHandler(Label label) {
+    public NodeByLabelTransactionEventHandler(Label label, Consumer consumer) {
         this.label = label;
+        this.consumer = consumer;
     }
 
     @Override public Object beforeCommit(TransactionData data) throws Exception {
-        Set<Node> updated = new HashSet<>();
-        Set<Node> deleted = new HashSet<>();
+        if (active.get()) {
+            return null;
+        }
+        active.set(true);
+        try {
 
-        data.deletedNodes().forEach(deleted::add);
-        data.removedLabels().forEach((l) -> {
-            if (l.label().equals(label)) deleted.add(l.node());
-        });
+            Set<Node> updated = new HashSet<>();
+            Set<Node> deleted = new HashSet<>();
 
-        data.createdNodes().forEach(updated::add);
-        data.assignedNodeProperties().forEach((p) -> updated.add(p.entity()));
-        data.removedNodeProperties().forEach((p) -> updated.add(p.entity()));
+            data.deletedNodes().forEach(deleted::add);
+            toStream(data.removedLabels()).filter(this::matchesLabel).map(LabelEntry::node).forEach(deleted::add);
+            data.createdNodes().forEach(updated::add);
+            toStream(data.assignedNodeProperties()).map(PropertyEntry::entity).forEach(updated::add);
+            toStream(data.removedNodeProperties()).map(PropertyEntry::entity).forEach(updated::add);
+            toStream(data.assignedLabels()).filter(this::matchesLabel).map(LabelEntry::node).forEach(updated::add);
 
-        data.assignedLabels().forEach((l) -> {
-            if (l.label().equals(label)) updated.add(l.node());
-        });
 
-        onChange(updated.stream().filter((n) -> n.hasLabel(label)).collect(Collectors.toSet()), deleted);
-        return null;
+            final Set<Node> collect = updated.stream().filter(this::hasLabel).collect(Collectors.toSet());
+            if (!collect.isEmpty() || !deleted.isEmpty()) {
+                consumer.onChange(collect, deleted);
+            }
+            return null;
+        } finally {
+            active.set(false);
+        }
     }
 
-    protected abstract void onChange(Collection<Node> updated, Collection<Node> deleted);
+    private boolean hasLabel(Node n) {
+        return n.hasLabel(label);
+    }
+
+    private boolean matchesLabel(LabelEntry l) {
+        return l.label().equals(label);
+    }
+
+    private <T> Stream<T> toStream(Iterable<T> labelEntries) {
+        return StreamSupport.stream(labelEntries.spliterator(), false);
+    }
 
     @Override public void afterCommit(TransactionData data, Object state) {
     }
 
     @Override public void afterRollback(TransactionData data, Object state) {
+    }
+
+    public interface Consumer {
+        void onChange(Collection<Node> updated, Collection<Node> deleted);
     }
 }
