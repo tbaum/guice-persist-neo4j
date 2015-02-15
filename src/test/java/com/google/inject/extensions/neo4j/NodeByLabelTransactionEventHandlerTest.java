@@ -5,14 +5,11 @@ import com.google.inject.Injector;
 import com.google.inject.Provides;
 import com.google.inject.extensions.neo4j.util.CypherExportService;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.event.TransactionEventHandler;
-import org.neo4j.kernel.api.exceptions.Status;
 
 import javax.inject.Provider;
-import java.util.Arrays;
 import java.util.Collection;
 
 import static com.google.inject.Guice.createInjector;
@@ -31,6 +28,7 @@ public class NodeByLabelTransactionEventHandlerTest {
     private GuicedExecutionEngine cypher;
 
     @Before public void setup() {
+        GuicedExecutionEngine.strictCypherVersion = true;
         Injector injector = createInjector(
                 override(new ImpermanentNeo4JPersistenceModule()).with(new AbstractModule() {
                     @Override protected void configure() {
@@ -48,19 +46,20 @@ public class NodeByLabelTransactionEventHandlerTest {
                 }
         );
         cypher = injector.getInstance(GuicedExecutionEngine.class);
-        cypher.execute("MATCH (n) OPTIONAL MATCH n-[o]-() DELETE o,n");
+        cypher.execute("CYPHER 2.2 MATCH (n) OPTIONAL MATCH n-[o]-() DELETE o,n");
     }
 
     @Test
     public void testExport() throws InterruptedException {
-        cypher.execute("CREATE (:Crew { name: 'Trinity' }),(:Crew { name:'Neo' }),(:Matrix { name: 'Cypher' })," +
-                        "(:Matrix {name:'Neo1'}),(:Matrix {name:'Neo2'})");
+        cypher.execute("CYPHER 2.2 CREATE (:Crew { name: 'Trinity' }),(:Crew { name:'Neo' })," +
+                "(:Matrix { name: 'Cypher' })," +
+                "(:Matrix {name:'Neo1'}),(:Matrix {name:'Neo2'})");
 
-        cypher.execute("MATCH (n:Crew {name:'Trinity'}) SET n.addon='favorite'");
-        cypher.execute("MATCH (n:Crew {name:'Trinity'}) SET n.name='trinity'");
-        cypher.execute("MATCH (n:Crew {name:'Neo'}) OPTIONAL MATCH n-[r]-() DELETE r,n");
-        cypher.execute("MATCH (n:Matrix {name:'Neo2'}) SET n:Crew");
-        cypher.execute("MATCH (n:Matrix {name:'Cypher'}) SET n.name='cypher' ");
+        cypher.execute("CYPHER 2.2 MATCH (n:Crew {name:'Trinity'}) SET n.addon='favorite'");
+        cypher.execute("CYPHER 2.2 MATCH (n:Crew {name:'Trinity'}) SET n.name='trinity'");
+        cypher.execute("CYPHER 2.2 MATCH (n:Crew {name:'Neo'}) OPTIONAL MATCH n-[r]-() DELETE r,n");
+        cypher.execute("CYPHER 2.2 MATCH (n:Matrix {name:'Neo2'}) SET n:Crew");
+        cypher.execute("CYPHER 2.2 MATCH (n:Matrix {name:'Cypher'}) SET n.name='cypher' ");
 
         assertPresent("Cypher", 0);
         assertPresent("cypher", 0);

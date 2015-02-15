@@ -1,10 +1,8 @@
 package com.google.inject.extensions.neo4j;
 
-import org.neo4j.cypher.ExecutionEngine;
-import org.neo4j.cypher.ExecutionResult;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.ResourceIterator;
-import org.neo4j.kernel.impl.util.StringLogger;
+import org.neo4j.graphdb.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,11 +24,12 @@ import static org.neo4j.helpers.collection.MapUtil.map;
 public class GuicedExecutionEngine {
 
     private static final Logger LOG = LoggerFactory.getLogger(GuicedExecutionEngine.class);
-    private final ExecutionEngine delegate;
+    public static volatile boolean strictCypherVersion = false;
+    private final GraphDatabaseService graphDatabaseService;
 
     @Inject
-    public GuicedExecutionEngine(GraphDatabaseService gds) {
-        delegate = new ExecutionEngine(gds, StringLogger.SYSTEM);
+    public GuicedExecutionEngine(GraphDatabaseService graphDatabaseService) {
+        this.graphDatabaseService = graphDatabaseService;
     }
 
     @Transactional
@@ -49,22 +48,22 @@ public class GuicedExecutionEngine {
     public <T> MutableResourceIterable<T> execute(String query, Map<String, Object> params,
                                                   Function<ResultMap, T> converter) {
         Function<Map<String, Object>, T> compose = converter.compose(ResultMap::new);
-        ExecutionResult maps = executeInternal(query, params);
+        Result maps = executeInternal(query, params);
 
         return new MutableResourceIterable<T>() {
             private final AtomicBoolean consumed = new AtomicBoolean(false);
 
-            private ExecutionResult _result() {
+            private Result _result() {
                 return (consumed.getAndSet(true) ? executeInternal(query, params) : maps);
             }
 
             @Override public <E> ResourceIterator<E> columnAs(String n) {
-                return _result().javaColumnAs(n);
+                return _result().columnAs(n);
             }
 
 
             @Override public ResourceIterator<T> iterator() {
-                return MutableResourceIterator.convert(_result().javaIterator(), compose);
+                return MutableResourceIterator.convert(_result(), compose);
             }
         };
     }
@@ -93,11 +92,21 @@ public class GuicedExecutionEngine {
         return singleResult(query, new HashMap<>(), (r) -> r);
     }
 
-    public ExecutionResult executeInternal(String query, Map<String, Object> parameters) {
+    public Result executeInternal(String query, Map<String, Object> parameters) {
+        final String s = query.trim().toUpperCase();
+        if (!s.startsWith("CYPHER 1.") && !s.startsWith("CYPHER 2.")) {
+            LOG.error("missing cypher-version for query '{}' params:{}", query, parameters);
+            if (strictCypherVersion) {
+                throw new RuntimeException("missing cypher-version for query " + s);
+            }
+        }
+        if (s.startsWith("CYPHER 1.")) {
+            LOG.warn("old cypher-version used, please update: '{}'", query);
+        }
         LOG.debug("Execute: '{}' params:{}", query, parameters);
         long start = currentTimeMillis();
         try {
-            return delegate.execute(query, parameters);
+            return graphDatabaseService.execute(query, parameters);
         } finally {
             long time = currentTimeMillis() - start;
             if (time > 50) {
