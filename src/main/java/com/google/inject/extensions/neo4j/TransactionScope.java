@@ -11,6 +11,7 @@ public class TransactionScope implements Scope, AutoCloseable {
 
     public static final TransactionScope TRANSACTIONAL = new TransactionScope();
     private final ThreadLocal<LinkedList<Transaction>> value = new ThreadLocal<>();
+    private final ThreadLocal<Boolean> failed = ThreadLocal.withInitial(() -> false);
 
     private TransactionScope() {
     }
@@ -26,6 +27,7 @@ public class TransactionScope implements Scope, AutoCloseable {
         LinkedList<Transaction> transactions = value.get();
         if (transactions == null) {
             value.set(transactions = new LinkedList<>());
+            failed.set(false);
         }
         transactions.add(transaction);
         return this;
@@ -67,5 +69,17 @@ public class TransactionScope implements Scope, AutoCloseable {
     public Integer getCurrentDepth() {
         LinkedList<Transaction> transactions = value.get();
         return transactions != null ? transactions.size() : null;
+    }
+
+    public void markFailed() {
+        if (!inScope()) {
+            throw new IllegalStateException("No scoping block in progress");
+        }
+        value.get().getFirst().failure();
+        failed.set(true);
+    }
+
+    public boolean isFailed() {
+        return failed.get();
     }
 }

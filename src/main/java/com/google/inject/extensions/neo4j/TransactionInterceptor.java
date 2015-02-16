@@ -34,8 +34,13 @@ public class TransactionInterceptor implements MethodInterceptor {
         try (Transaction transaction = gdb.get().beginTx()) {
             try (TransactionScope ignored = transactionScope.enter(transaction)) {
                 final Object result = methodInvocation.proceed();
-                LOG.debug("marking transaction success");
-                transaction.success();
+                if (transactionScope.isFailed()) {
+                    LOG.debug("marking transaction failed");
+                    transaction.failure();
+                } else {
+                    LOG.debug("marking transaction success");
+                    transaction.success();
+                }
                 return result;
             } catch (Throwable throwable) {
                 final Class<? extends Throwable> throwableClass = throwable.getClass();
