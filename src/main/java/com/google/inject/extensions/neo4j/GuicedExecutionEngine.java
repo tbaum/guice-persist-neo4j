@@ -24,7 +24,7 @@ import static org.neo4j.helpers.collection.MapUtil.map;
 public class GuicedExecutionEngine {
 
     private static final Logger LOG = LoggerFactory.getLogger(GuicedExecutionEngine.class);
-    public static volatile boolean strictCypherVersion = false;
+    public static volatile boolean strictCypherVersion = true;
     private final GraphDatabaseService graphDatabaseService;
 
     @Inject
@@ -101,7 +101,7 @@ public class GuicedExecutionEngine {
             }
         }
         if (s.startsWith("CYPHER 1.")) {
-            LOG.warn("old cypher-version used, please update: '{}'", query);
+            LOG.error("old cypher-version used, please update: '{}'", query);
         }
         LOG.debug("Execute: '{}' params:{}", query, parameters);
         long start = currentTimeMillis();

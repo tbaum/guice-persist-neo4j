@@ -13,7 +13,6 @@ public class CypherExportTest {
     private GuicedExecutionEngine cypher;
 
     @Before public void setup() {
-        GuicedExecutionEngine.strictCypherVersion = true;
         Injector injector = createInjector(new ImpermanentNeo4JPersistenceModule(), new AbstractModule() {
             @Override protected void configure() {
                 requestStaticInjection(CypherExportService.class);

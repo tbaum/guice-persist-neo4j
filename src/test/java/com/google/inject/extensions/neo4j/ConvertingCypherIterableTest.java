@@ -18,7 +18,6 @@ public class ConvertingCypherIterableTest {
     private Node ref;
 
     @Before public void setup() {
-        GuicedExecutionEngine.strictCypherVersion = true;
         Injector injector = createInjector(new ImpermanentNeo4JPersistenceModule());
         cypher = injector.getInstance(GuicedExecutionEngine.class);
         try (ResourceIterator<Node> n = cypher.execute(

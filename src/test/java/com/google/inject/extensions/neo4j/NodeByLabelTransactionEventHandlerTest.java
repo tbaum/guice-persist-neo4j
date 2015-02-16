@@ -28,7 +28,6 @@ public class NodeByLabelTransactionEventHandlerTest {
     private GuicedExecutionEngine cypher;
 
     @Before public void setup() {
-        GuicedExecutionEngine.strictCypherVersion = true;
         Injector injector = createInjector(
                 override(new ImpermanentNeo4JPersistenceModule()).with(new AbstractModule() {
                     @Override protected void configure() {
