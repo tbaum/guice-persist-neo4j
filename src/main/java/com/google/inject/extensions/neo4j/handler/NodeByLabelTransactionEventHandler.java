@@ -46,6 +46,19 @@ public class NodeByLabelTransactionEventHandler implements TransactionEventHandl
             toStream(data.removedNodeProperties()).map(PropertyEntry::entity).forEach(updated::add);
             toStream(data.assignedLabels()).filter(this::matchesLabel).map(LabelEntry::node).forEach(updated::add);
 
+            data.deletedRelationships().forEach(r -> {
+                if (!deleted.contains(r.getStartNode())) {
+                    updated.add(r.getStartNode());
+                }
+                if (!deleted.contains(r.getEndNode())) {
+                    updated.add(r.getEndNode());
+                }
+            });
+
+            data.createdRelationships().forEach(r -> {
+                updated.add(r.getStartNode());
+                updated.add(r.getEndNode());
+            });
 
             final Set<Node> collect = updated.stream().filter(this::hasLabel).collect(Collectors.toSet());
             if (!collect.isEmpty() || !deleted.isEmpty()) {
