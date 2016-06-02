@@ -94,7 +94,7 @@ public class GuicedExecutionEngine {
 
     public Result executeInternal(String query, Map<String, Object> parameters) {
         final String s = query.trim().toUpperCase();
-        if (!s.startsWith("CYPHER 1.") && !s.startsWith("CYPHER 2.")) {
+        if (!s.startsWith("CYPHER 2.") && !s.startsWith("CYPHER 3.")) {
             LOG.error("missing cypher-version for query '{}' params:{}", query, parameters);
             if (strictCypherVersion) {
                 throw new RuntimeException("missing cypher-version for query " + s);

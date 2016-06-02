@@ -155,17 +155,17 @@ public class RollbackOnTest {
     }
 
 
-    static class Exception1 extends RuntimeException {
+    private static class Exception1 extends RuntimeException {
     }
 
     static class Exception2 extends RuntimeException {
     }
 
-    static class ExceptionExtends2 extends Exception2 {
+    private static class ExceptionExtends2 extends Exception2 {
     }
 
 
-    static class A {
+    private static class A {
         final Node node;
 
         @Inject A(GraphDatabaseService gds) {
@@ -190,12 +190,14 @@ public class RollbackOnTest {
             throw t;
         }
 
-        @Transactional(rollbackOn = ExceptionExtends2.class) Transaction _rollbackExceptionExtends2(RuntimeException t) {
+        @Transactional(rollbackOn = ExceptionExtends2.class)
+        Transaction _rollbackExceptionExtends2(RuntimeException t) {
             node.setProperty("v", true);
             throw t;
         }
 
-        @Transactional(rollbackOn = {Exception1.class, ExceptionExtends2.class}) Transaction _rollbackList(RuntimeException t) {
+        @Transactional(rollbackOn = {Exception1.class, ExceptionExtends2.class})
+        Transaction _rollbackList(RuntimeException t) {
             node.setProperty("v", true);
             throw t;
         }
@@ -210,12 +212,14 @@ public class RollbackOnTest {
             throw t;
         }
 
-        @Transactional(noRollbackFor = ExceptionExtends2.class) Transaction _noRollbackExceptionExtends2(RuntimeException t) {
+        @Transactional(noRollbackFor = ExceptionExtends2.class)
+        Transaction _noRollbackExceptionExtends2(RuntimeException t) {
             node.setProperty("v", true);
             throw t;
         }
 
-        @Transactional(noRollbackFor = {Exception1.class, ExceptionExtends2.class}) Transaction _noRollbackList(RuntimeException t) {
+        @Transactional(noRollbackFor = {Exception1.class, ExceptionExtends2.class})
+        Transaction _noRollbackList(RuntimeException t) {
             node.setProperty("v", true);
             throw t;
         }

@@ -6,11 +6,13 @@ import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+
 public class EmbeddedNeo4JPersistenceModule extends Neo4JPersistenceModule {
     private static final Logger LOG = LoggerFactory.getLogger(EmbeddedNeo4JPersistenceModule.class);
-    private final String dbLocation;
+    private final File dbLocation;
 
-    public EmbeddedNeo4JPersistenceModule(String dbLocation) {
+    public EmbeddedNeo4JPersistenceModule(File dbLocation) {
         this.dbLocation = dbLocation;
     }
 

@@ -7,8 +7,8 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.neo4j.graphdb.Transaction;
-import org.neo4j.kernel.PlaceboTransaction;
-import org.neo4j.kernel.TopLevelTransaction;
+import org.neo4j.kernel.impl.coreapi.PlaceboTransaction;
+import org.neo4j.kernel.impl.coreapi.TopLevelTransaction;
 
 import javax.inject.Inject;
 import javax.inject.Provider;

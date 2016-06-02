@@ -6,9 +6,10 @@ import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.event.TransactionData;
 import org.neo4j.graphdb.event.TransactionEventHandler;
 import org.neo4j.graphdb.index.IndexManager;
-import org.neo4j.helpers.collection.IteratorUtil;
 
 import java.util.Collection;
+
+import static org.neo4j.helpers.collection.Iterables.asCollection;
 
 /**
  * @author tbaum
@@ -23,8 +24,8 @@ public class PatchIndexeTransactionEventHandler implements TransactionEventHandl
     }
 
     @Override public Object beforeCommit(TransactionData data) throws Exception {
-        Collection<Node> deletedNodes = IteratorUtil.asCollection(data.deletedNodes());
-        Collection<Relationship> deletedRels = IteratorUtil.asCollection(data.deletedRelationships());
+        Collection<Node> deletedNodes = asCollection(data.deletedNodes());
+        Collection<Relationship> deletedRels = asCollection(data.deletedRelationships());
 
         IndexManager index = graphDatabase.index();
         deletedNodes.forEach((node) -> {

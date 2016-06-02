@@ -4,8 +4,8 @@ import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.factory.GraphDatabaseBuilder;
 import org.neo4j.test.TestGraphDatabaseFactory;
 
-import static org.neo4j.helpers.Settings.BOOLEAN;
-import static org.neo4j.helpers.Settings.setting;
+import static org.neo4j.kernel.configuration.Settings.BOOLEAN;
+import static org.neo4j.kernel.configuration.Settings.setting;
 
 public class ImpermanentNeo4JPersistenceModule extends Neo4JPersistenceModule {
     @Override protected GraphDatabaseService createGraphDatabase() {

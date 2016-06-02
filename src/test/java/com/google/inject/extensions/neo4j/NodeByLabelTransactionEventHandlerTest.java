@@ -15,9 +15,9 @@ import java.util.Collection;
 import static com.google.inject.Guice.createInjector;
 import static com.google.inject.extensions.neo4j.handler.FulltextIndexTransactionEventHandler.fulltext;
 import static com.google.inject.util.Modules.override;
-import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
-import static org.neo4j.graphdb.DynamicLabel.label;
+import static org.neo4j.graphdb.Label.label;
 import static org.neo4j.helpers.collection.MapUtil.map;
 
 /**
@@ -35,7 +35,7 @@ public class NodeByLabelTransactionEventHandlerTest {
 
                     @Provides Collection<TransactionEventHandler> transactionEventHandler(
                             Provider<GraphDatabaseService> gds) {
-                        return asList(fulltext(gds, label("Crew"), "ft", "text", "name", "addon"));
+                        return singletonList(fulltext(gds, label("Crew"), "ft", "text", "name", "addon"));
                     }
                 }),
                 new AbstractModule() {
@@ -45,20 +45,20 @@ public class NodeByLabelTransactionEventHandlerTest {
                 }
         );
         cypher = injector.getInstance(GuicedExecutionEngine.class);
-        cypher.execute("CYPHER 2.2 MATCH (n) OPTIONAL MATCH n-[o]-() DELETE o,n");
+        cypher.execute("CYPHER 3.0 MATCH (n) OPTIONAL MATCH (n)-[o]-() DELETE o,n");
     }
 
     @Test
     public void testExport() throws InterruptedException {
-        cypher.execute("CYPHER 2.2 CREATE (:Crew { name: 'Trinity' }),(:Crew { name:'Neo' })," +
+        cypher.execute("CYPHER 3.0 CREATE (:Crew { name: 'Trinity' }),(:Crew { name:'Neo' })," +
                 "(:Matrix { name: 'Cypher' })," +
                 "(:Matrix {name:'Neo1'}),(:Matrix {name:'Neo2'})");
 
-        cypher.execute("CYPHER 2.2 MATCH (n:Crew {name:'Trinity'}) SET n.addon='favorite'");
-        cypher.execute("CYPHER 2.2 MATCH (n:Crew {name:'Trinity'}) SET n.name='trinity'");
-        cypher.execute("CYPHER 2.2 MATCH (n:Crew {name:'Neo'}) OPTIONAL MATCH n-[r]-() DELETE r,n");
-        cypher.execute("CYPHER 2.2 MATCH (n:Matrix {name:'Neo2'}) SET n:Crew");
-        cypher.execute("CYPHER 2.2 MATCH (n:Matrix {name:'Cypher'}) SET n.name='cypher' ");
+        cypher.execute("CYPHER 3.0 MATCH (n:Crew {name:'Trinity'}) SET n.addon='favorite'");
+        cypher.execute("CYPHER 3.0 MATCH (n:Crew {name:'Trinity'}) SET n.name='trinity'");
+        cypher.execute("CYPHER 3.0 MATCH (n:Crew {name:'Neo'}) OPTIONAL MATCH (n)-[r]-() DELETE r,n");
+        cypher.execute("CYPHER 3.0 MATCH (n:Matrix {name:'Neo2'}) SET n:Crew");
+        cypher.execute("CYPHER 3.0 MATCH (n:Matrix {name:'Cypher'}) SET n.name='cypher' ");
 
         assertPresent("Cypher", 0);
         assertPresent("cypher", 0);
@@ -72,7 +72,7 @@ public class NodeByLabelTransactionEventHandlerTest {
 
     private void assertPresent(String key, long expectedCount) throws InterruptedException {
         assertEquals("index for " + key, expectedCount,
-                cypher.<Number>singleResult("CYPHER 2.0 START n=node:ft(text={p}) RETURN count(*)", map("p", key),
+                cypher.<Number>singleResult("CYPHER 3.0 START n=node:ft(text={p}) RETURN count(*)", map("p", key),
                         (r) -> r.get("count(*)")));
     }
 }

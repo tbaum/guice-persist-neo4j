@@ -8,10 +8,10 @@ import org.neo4j.graphdb.schema.ConstraintDefinition;
 import org.neo4j.graphdb.schema.IndexDefinition;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.lang.String.join;
-import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
-import static org.neo4j.tooling.GlobalGraphOperations.at;
+import static org.neo4j.helpers.collection.Iterators.asCollection;
 
 public class CypherExportService {
 
@@ -43,7 +43,9 @@ public class CypherExportService {
 
         public String export() {
             try (Transaction tx = gdb.beginTx()) {
-                Collection<Node> nodeIds = asCollection(at(gdb).getAllNodes());
+
+                ResourceIterable<Node> allNodes = gdb.getAllNodes();
+                Collection<Node> nodeIds = allNodes.stream().collect(Collectors.toList());
 
                 StringBuilder sb = new StringBuilder("create \n");
                 sb.append(appendNodes(nodeIds));

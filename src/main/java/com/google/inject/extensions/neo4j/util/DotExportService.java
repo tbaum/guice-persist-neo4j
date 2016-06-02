@@ -3,7 +3,6 @@ package com.google.inject.extensions.neo4j.util;
 import com.google.gson.GsonBuilder;
 import com.google.inject.Inject;
 import com.google.inject.extensions.neo4j.GuicedExecutionEngine;
-import org.neo4j.cypher.javacompat.ExecutionEngine;
 import org.neo4j.graphdb.*;
 
 import java.io.File;
@@ -13,8 +12,6 @@ import java.io.Writer;
 import java.util.*;
 
 import static org.neo4j.graphdb.Direction.OUTGOING;
-import static org.neo4j.helpers.collection.IteratorUtil.asCollection;
-import static org.neo4j.helpers.collection.IteratorUtil.asIterable;
 
 public class DotExportService {
 
@@ -25,7 +22,8 @@ public class DotExportService {
     @Inject private static GraphDatabaseService gds;
 
     public static String export(Iterator<Node> allNodes) {
-        Collection<Node> node = asCollection(asIterable(allNodes));
+        Collection<Node> node = new LinkedList<>();
+        allNodes.forEachRemaining(node::add);
         StringBuilder sb = new StringBuilder();
         sb.append("digraph {\n");
         appendNodes(sb, node);
