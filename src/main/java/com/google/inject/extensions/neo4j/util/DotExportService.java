@@ -117,7 +117,7 @@ public class DotExportService {
         String methodName = e.getMethodName();
         File f = new File("target", className + "_" + methodName + "_" + e.getLineNumber() + ".gv");
 
-        toFile(f, "CYPHER 2.2 MATCH (n) RETURN n");
+        toFile(f, "CYPHER 2.3 MATCH (n) RETURN n");
     }
 
     private static String formatProperties(PropertyContainer pc, boolean reverse, boolean mark, String... lines) {
