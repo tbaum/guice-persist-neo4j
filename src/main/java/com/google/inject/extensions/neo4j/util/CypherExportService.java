@@ -8,12 +8,15 @@ import org.neo4j.graphdb.schema.ConstraintDefinition;
 import org.neo4j.graphdb.schema.IndexDefinition;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.lang.String.join;
 import static org.neo4j.helpers.collection.Iterators.asCollection;
 
 public class CypherExportService {
+
+    public static Function<Node, Iterable<Label>> toLabels = Node::getLabels;
 
     @Inject private static GraphDatabaseService gdb;
 
@@ -173,7 +176,7 @@ public class CypherExportService {
         }
 
         private void formatLabels(StringBuilder sb, Node n) {
-            n.getLabels().forEach(label -> sb.append(":").append(label));
+            toLabels.apply(n).forEach(label -> sb.append(":").append(label));
         }
     }
 
@@ -213,8 +216,9 @@ public class CypherExportService {
         }
 
         private String firstLabel(Node node) {
-            final Iterator<Label> iterator = node.getLabels().iterator();
+            final Iterator<Label> iterator = toLabels.apply(node).iterator();
             return iterator.hasNext() ? iterator.next().name() : "_no_label_";
         }
     }
+
 }

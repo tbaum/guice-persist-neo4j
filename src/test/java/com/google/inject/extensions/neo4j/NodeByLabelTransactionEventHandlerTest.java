@@ -45,20 +45,20 @@ public class NodeByLabelTransactionEventHandlerTest {
                 }
         );
         cypher = injector.getInstance(GuicedExecutionEngine.class);
-        cypher.execute("CYPHER 3.0 MATCH (n) OPTIONAL MATCH (n)-[o]-() DELETE o,n");
+        cypher.execute("CYPHER 3.2 MATCH (n) OPTIONAL MATCH (n)-[o]-() DELETE o,n");
     }
 
     @Test
     public void testExport() throws InterruptedException {
-        cypher.execute("CYPHER 3.0 CREATE (:Crew { name: 'Trinity' }),(:Crew { name:'Neo' })," +
+        cypher.execute("CYPHER 3.2 CREATE (:Crew { name: 'Trinity' }),(:Crew { name:'Neo' })," +
                 "(:Matrix { name: 'Cypher' })," +
                 "(:Matrix {name:'Neo1'}),(:Matrix {name:'Neo2'})");
 
-        cypher.execute("CYPHER 3.0 MATCH (n:Crew {name:'Trinity'}) SET n.addon='favorite'");
-        cypher.execute("CYPHER 3.0 MATCH (n:Crew {name:'Trinity'}) SET n.name='trinity'");
-        cypher.execute("CYPHER 3.0 MATCH (n:Crew {name:'Neo'}) OPTIONAL MATCH (n)-[r]-() DELETE r,n");
-        cypher.execute("CYPHER 3.0 MATCH (n:Matrix {name:'Neo2'}) SET n:Crew");
-        cypher.execute("CYPHER 3.0 MATCH (n:Matrix {name:'Cypher'}) SET n.name='cypher' ");
+        cypher.execute("CYPHER 3.2 MATCH (n:Crew {name:'Trinity'}) SET n.addon='favorite'");
+        cypher.execute("CYPHER 3.2 MATCH (n:Crew {name:'Trinity'}) SET n.name='trinity'");
+        cypher.execute("CYPHER 3.2 MATCH (n:Crew {name:'Neo'}) OPTIONAL MATCH (n)-[r]-() DELETE r,n");
+        cypher.execute("CYPHER 3.2 MATCH (n:Matrix {name:'Neo2'}) SET n:Crew");
+        cypher.execute("CYPHER 3.2 MATCH (n:Matrix {name:'Cypher'}) SET n.name='cypher' ");
 
         assertPresent("Cypher", 0);
         assertPresent("cypher", 0);
@@ -72,7 +72,7 @@ public class NodeByLabelTransactionEventHandlerTest {
 
     private void assertPresent(String key, long expectedCount) throws InterruptedException {
         assertEquals("index for " + key, expectedCount,
-                cypher.<Number>singleResult("CYPHER 3.0 START n=node:ft(text={p}) RETURN count(*)", map("p", key),
+                cypher.<Number>singleResult("CYPHER 3.2 START n=node:ft(text={p}) RETURN count(*)", map("p", key),
                         (r) -> r.get("count(*)")));
     }
 }

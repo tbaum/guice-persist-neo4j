@@ -19,14 +19,14 @@ public class CypherExportTest {
             }
         });
         cypher = injector.getInstance(GuicedExecutionEngine.class);
-        cypher.execute("CYPHER 3.0 MATCH (n) OPTIONAL MATCH (n)-[o]-() DELETE o,n");
+        cypher.execute("CYPHER 3.2 MATCH (n) OPTIONAL MATCH (n)-[o]-() DELETE o,n");
     }
 
     @Test
     public void testExport() {
-        cypher.execute("CYPHER 3.0 CREATE INDEX ON :Matrix(name)");
-        cypher.execute("CYPHER 3.0 CREATE CONSTRAINT ON (i:Crew) ASSERT i.name IS UNIQUE");
-        cypher.execute("CYPHER 3.0 CREATE (:Crew { name: 'Trinity' })<-[:LOVES]-(:Crew { name:'Neo' })-[:KNOWS {since: 1990}]->" +
+        cypher.execute("CYPHER 3.2 CREATE INDEX ON :Matrix(name)");
+        cypher.execute("CYPHER 3.2 CREATE CONSTRAINT ON (i:Crew) ASSERT i.name IS UNIQUE");
+        cypher.execute("CYPHER 3.2 CREATE (:Crew { name: 'Trinity' })<-[:LOVES]-(:Crew { name:'Neo' })-[:KNOWS {since: 1990}]->" +
                         "(:Crew { name: 'Morpheus' }),(:Crew:Matrix { name: 'Cypher' })");
 
         CypherExportService.assertGraphConstraintsEquals("CREATE CONSTRAINT ON (c:Crew) ASSERT c.name IS UNIQUE;\n" +
