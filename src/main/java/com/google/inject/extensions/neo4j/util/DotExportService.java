@@ -2,6 +2,7 @@ package com.google.inject.extensions.neo4j.util;
 
 import com.google.gson.GsonBuilder;
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.extensions.neo4j.GuicedExecutionEngine;
 import org.neo4j.graphdb.*;
 
@@ -18,8 +19,8 @@ public class DotExportService {
     public static final Set<ClusterStrategy<Node>> clusterStrategies = new HashSet<>();
     public static final Set<FormatStrategy<Node>> highlightStrategies = new HashSet<>();
     public static final Set<FormatStrategy<Relationship>> reverseLink = new HashSet<>();
-    @Inject private static GuicedExecutionEngine cypher;
-    @Inject private static GraphDatabaseService gds;
+    @Inject private static Provider<GuicedExecutionEngine> cypher;
+    @Inject private static Provider<GraphDatabaseService> gds;
 
     public static String export(Iterator<Node> allNodes) {
         Collection<Node> node = new LinkedList<>();
@@ -101,8 +102,8 @@ public class DotExportService {
     }
 
     public static String export(String query) {
-        try (Transaction tx = gds.beginTx()) {
-            final String result = export(cypher.execute(query).<Node>columnAs("n"));
+        try (Transaction tx = gds.get().beginTx()) {
+            final String result = export(cypher.get().execute(query).<Node>columnAs("n"));
             tx.success();
             return result;
         }

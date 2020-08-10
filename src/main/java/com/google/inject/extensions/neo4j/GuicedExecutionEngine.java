@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import javax.inject.Provider;
 import javax.inject.Singleton;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,10 +26,10 @@ public class GuicedExecutionEngine {
 
     private static final Logger LOG = LoggerFactory.getLogger(GuicedExecutionEngine.class);
     public static volatile boolean strictCypherVersion = true;
-    private final GraphDatabaseService graphDatabaseService;
+    private final Provider<GraphDatabaseService> graphDatabaseService;
 
     @Inject
-    public GuicedExecutionEngine(GraphDatabaseService graphDatabaseService) {
+    public GuicedExecutionEngine(Provider<GraphDatabaseService> graphDatabaseService) {
         this.graphDatabaseService = graphDatabaseService;
     }
 
@@ -106,7 +107,7 @@ public class GuicedExecutionEngine {
         LOG.debug("Execute: '{}' params:{}", query, parameters);
         long start = currentTimeMillis();
         try {
-            return graphDatabaseService.execute(query, parameters);
+            return graphDatabaseService.get().execute(query, parameters);
         } finally {
             long time = currentTimeMillis() - start;
             if (time > 50) {

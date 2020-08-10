@@ -13,7 +13,7 @@ import static com.google.inject.extensions.neo4j.TransactionScope.TRANSACTIONAL;
 import static com.google.inject.matcher.Matchers.annotatedWith;
 import static com.google.inject.matcher.Matchers.any;
 import static java.lang.Runtime.getRuntime;
-import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 
 /**
  * @author tbaum
@@ -33,14 +33,9 @@ public abstract class Neo4JPersistenceModule extends AbstractModule {
         bind(Transaction.class).toProvider(TransactionScope.transactionProvider()).in(TRANSACTIONAL);
     }
 
-    @Provides @Singleton GraphDatabaseService getGraphDatabaseService(Collection<TransactionEventHandler> handlers) {
-        final GraphDatabaseService graphDatabase = createGraphDatabase();
-
-        getRuntime().addShutdownHook(new Thread() {
-            @Override public void run() {
-                graphDatabase.shutdown();
-            }
-        });
+    @Provides @Singleton protected GraphDatabaseService graphDatabaseService(Collection<TransactionEventHandler> handlers) {
+        GraphDatabaseService graphDatabase = createGraphDatabase();
+        getRuntime().addShutdownHook(new Thread(graphDatabase::shutdown));
         handlers.forEach(graphDatabase::registerTransactionEventHandler);
 //        if (!(graphDatabase instanceof EmbeddedReadOnlyGraphDatabase)) {
 //            graphDatabase.registerTransactionEventHandler(new PatchIndexeTransactionEventHandler(graphDatabase, backgroundWorker));
@@ -48,8 +43,8 @@ public abstract class Neo4JPersistenceModule extends AbstractModule {
         return graphDatabase;
     }
 
-    @Provides @Singleton Collection<TransactionEventHandler> defaultTransactionEventHandler() {
-        return asList();
+    @Provides @Singleton protected Collection<TransactionEventHandler> defaultTransactionEventHandler() {
+        return emptyList();
     }
 
     protected abstract GraphDatabaseService createGraphDatabase();

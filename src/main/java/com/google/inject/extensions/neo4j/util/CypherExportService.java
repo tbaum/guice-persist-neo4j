@@ -7,6 +7,7 @@ import org.neo4j.graphdb.*;
 import org.neo4j.graphdb.schema.ConstraintDefinition;
 import org.neo4j.graphdb.schema.IndexDefinition;
 
+import javax.inject.Provider;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -18,22 +19,22 @@ public class CypherExportService {
 
     public static Function<Node, Iterable<Label>> toLabels = Node::getLabels;
 
-    @Inject private static GraphDatabaseService gdb;
+    @Inject private static Provider<GraphDatabaseService> gdb;
 
     public static void exportToFile() {
         DotExportService.toFile();
     }
 
     public static void assertGraphEquals(String expected) {
-        Assert.assertEquals(expected, new Exporter(gdb).export());
+        Assert.assertEquals(expected, new Exporter(gdb.get()).export());
     }
 
     public static void assertGraphConstraintsEquals(String expected) {
-        Assert.assertEquals(expected, new Exporter(gdb).exportConstraints());
+        Assert.assertEquals(expected, new Exporter(gdb.get()).exportConstraints());
     }
 
     public static String export() {
-        return new Exporter(gdb).export();
+        return new Exporter(gdb.get()).export();
     }
 
     public static class Exporter {
